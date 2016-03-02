@@ -142,7 +142,8 @@ def main():
         exonpos = exonTgene[:, :2].ravel('C')
     elif options.fn_bam != '-':
         print "WARNING: Running only gene counts"
-        exonTable = getFullAnnotationTable()
+        #exonTable = getFullAnnotationTable()
+        exonTable = exonTgene
         data = get_counts_from_single_bam(options.fn_bam,exonTable)
         sp.savetxt(options.fn_out+'counts.tsv', sp.vstack((exonTable,data[::2])).T, delimiter = '\t', fmt = '%s')
         sys.exit(0)
