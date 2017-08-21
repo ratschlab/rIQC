@@ -19,7 +19,7 @@ def get_counts_from_single_bam(fn_bam, regions):
         dummy[:] = sp.nan
         return dummy
     if not os.stat(fn_bam).st_size > 0:
-        warnings.warn('WARNING: alignment file %s seems not to be empty and will be skipped! \n' % fn_bam)
+        warnings.warn('WARNING: alignment file %s seems to be empty and will be skipped! \n' % fn_bam)
         dummy = sp.zeros(regions.shape[0] * 2)
         dummy[:] = sp.nan
         return dummy
@@ -50,20 +50,11 @@ def get_counts_from_single_bam(fn_bam, regions):
             start2 = int(rec[1].split(':')[1].split('-')[0])
             end2   = int(rec[1].split(':')[1].split('-')[1])
         try:
-            #readids = Set([])
-            #dummy   = [readids.add(read.query_name) for read in samfile.fetch(chrm, start1, end1) if not read.is_secondary]
-            #len(readids)
             cnt1    = len([1 for read in samfile.fetch(chrm, start1, end1) if not read.is_secondary]) #Otherwise does not match firebrowse            
             if start2 is None:
                 cnt2 = cnt1
             else:
-                readids = Set([])
-                dummy   = [readids.add(read.query_name) for read in samfile.fetch(chrm, start1, end1) if not read.is_secondary]
-                cnt2    = len([1 for read in samfile.fetch(chrm, start1, end1) if not read.is_secondary]) #Otherwise does not match firebrowse
-                
-                #cnt2 = len([1 for read in samfile.fetch(chrm, start2, end2) if not read.is_secondary])
-            #cnt1 = samfile.count(chrm, start1, end1)
-            #cnt2 = samfile.count(chrm, start2, end2)
+                cnt2    = len([1 for read in samfile.fetch(chrm, start2, end2) if not read.is_secondary]) #Otherwise does not match firebrowse
         except ValueError:
             print >> sys.stderr, 'Ignored %s' % chrm
             cnt1 = 1
