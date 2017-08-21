@@ -14,6 +14,7 @@ from libs.annotation import *
 from libs.counts import *
 from libs.viz import *
 from libs.bam import *
+from libs.kmer import *
 
 import logging
 
@@ -27,6 +28,7 @@ def parse_options(argv):
     sampleinput.add_option('-f', '--file', dest='fn_exonq', metavar= 'FILE', help='Exon quantification file from firehose', default = '-')
     sampleinput.add_option('-b', '--bam_dir', dest = 'dir_bam', metavar = 'FILE', help = 'Directory of bam files', default = '-')
     sampleinput.add_option('-t', '--tab_cnt', dest = 'dir_cnt', metavar = 'FILE', help = 'Directory of tab delimited count files' , default = '-')
+    sampleinput.add_option('-F', '--fastq_dir', dest = 'fastq_dir', metavar = 'FILE', help = 'Directory of fastq files', default = '-')
     sampleinput.add_option('-a', '--fn_anno', dest = 'fn_anno', metavar = 'FILE', help = 'Annotation', default = '-')
     sampleinput.add_option('-n', '--fn_bam', dest = 'fn_bam', metavar = 'FIlE', help = 'Specifies bam file for counting only', default = '-')
 
@@ -37,6 +39,7 @@ def parse_options(argv):
     optional.add_option('-w', '--whitelist', dest = 'fn_white', metavar = 'FILE',   help = 'White list with ids',      default = '-')
     optional.add_option('-o', '--fnout',    dest = 'fn_out',   metavar = 'FILE',   help = 'prefix for output',        default = 'out')
     optional.add_option('-g', '--log',       dest = 'fn_log',   metavar = 'FILE',   help = 'Log file',                 default = 'out.log')
+    optional.add_option('-G', '--genome', dest = 'fn_genome', metavar = 'FILE', help = 'Path to genome file in fasta', default = '-')
     optional.add_option('-p', '--plot', dest = 'doPlot', action = "store_true", help = 'Plot figures', default=False)
     optional.add_option('-v', '--verbose', dest = 'isVerbose', action = "store_true", help = 'Set Logger To Verbose', default=False)
     optional.add_option('-c', '--pseudocount', dest = 'doPseudo', action = "store_true", help = 'Add Pseudocounts to ratio', default=False)
@@ -44,6 +47,8 @@ def parse_options(argv):
     optional.add_option('-i', '--genelist', dest = 'fn_genes', metavar = 'FILE', help = 'file with genenames to use', default = '-')
     optional.add_option('-s', '--fn_sample_ratio', dest = 'fn_sample_ratio', metavar = 'FILE', help = 'Sample Ratios in relation to yours', default = os.path.join(os.path.realpath(__file__).rsplit('/',1)[:-1][0] ,'data','sampleRatios/TCGA_sample_a_ratio_uq.tsv'))
     optional.add_option('-d', '--mask-filter', dest = 'filt', help = 'Mask all readcounts below this integer', default = '0')
+    optional.add_option('-k', '', dest = 'k', type = 'int', help = 'Length of k-mer for alignmentfree counting [27]', default = 27)
+    optional.add_option('-R', '--reads_kmer', dest = 'kmer_thresh', type = 'int', help = 'Number of active reads per sample that are required for k-mer counting [50000]', default = 50000)
     
     parser.add_option_group(sampleinput)
     parser.add_option_group(optional)
@@ -52,7 +57,7 @@ def parse_options(argv):
     if len(argv) < 2:
         parser.print_help()
         sys.exit(2)
-    if sp.sum(int(options.fn_exonq != '-') + int(options.dir_bam != '-') + int(options.dir_cnt != '-') + int(options.fn_bam != '-')) != 1:
+    if sp.sum(int(options.fn_exonq != '-') + int(options.dir_bam != '-') + int(options.dir_cnt != '-') + int(options.fn_bam != '-') + int(options.fastq_dir != '-')) != 1:
         print "Please specify exactly one type of input file(s) (e.g.: Exon quantification, Bam Files or Tab delimited count files)"
         parser.print_help()
         sys.exit(2)
@@ -135,6 +140,13 @@ def main():
             exonl = sp.array([int(x.split(':')[1].split('-')[1]) - int(x.split(':')[1].split('-')[0]) + 1 for x in exonpos])
             data /= sp.tile(exonl[:, sp.newaxis], data.shape[1])
 
+    elif options.fastq_dir != '-':
+        kmers1, kmers2 = prepare_kmers(options, exonTgene) 
+        kmers1, kmers2 = clean_kmers(options, kmers1, kmers2)
+        fastq_list = glob.glob(os.path.join(options.fastq_dir, '*.fastq'))
+        header = fastq_list
+        data = get_counts_from_multiple_fastq(fastq_list, kmers1, kmers2, options)
+        exonpos = exonTgene[:, :2].ravel('C')
     elif options.dir_bam != '-':
         bam_list = glob.glob(os.path.join(options.dir_bam, '*.bam'))
         header = bam_list ### change this TODO 
@@ -147,6 +159,7 @@ def main():
         data = get_counts_from_single_bam(options.fn_bam,exonTable)
         sp.savetxt(options.fn_out+'counts.tsv', sp.vstack((exonTable,data[::2])).T, delimiter = '\t', fmt = '%s')
         sys.exit(0)
+
 
     ### normalize counts by exon length
     logging.info("Normalize counts by exon length")
