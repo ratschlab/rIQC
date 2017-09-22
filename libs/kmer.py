@@ -3,6 +3,8 @@ import scipy as sp
 import os
 import time
 import cPickle
+import numpy.random as npr
+npr.seed(23)
 
 REV_DIC = {'A':'T',
            'C':'G',
@@ -125,14 +127,20 @@ def get_counts_from_single_fastq(fn_fastq, kmers1, kmers2, options):
     all_kmers1 = dict([[_, 0] for s in kmers1 for _ in s])
     all_kmers2 = dict([[_, 0] for s in kmers2 for _ in s])
 
+    use_fraction = False
+    if options.kmer_thresh <= 1:
+        use_fraction = True
+
     print 'Processing %s' % fn_fastq
     cnt = 0
     cnt1 = 0
     for l, line in enumerate(open(fn_fastq, 'r')):
         if l % 4 != 1:
             continue
+        if use_fraction and npr.random() > options.kmer_thresh:
+            continue
         cnt += 1
-        if cnt1 > options.kmer_thresh:
+        if not use_fraction and cnt1 > options.kmer_thresh:
             break
         if cnt % 10000 == 0:
             sys.stdout.write('.')
@@ -141,7 +149,7 @@ def get_counts_from_single_fastq(fn_fastq, kmers1, kmers2, options):
             sys.stdout.flush()
         sl = line.strip()
         slr = __reverse_complement(sl)
-        for s in range(0, len(sl) - options.k + 1, 4):
+        for s in range(0, len(sl) - options.k + 1, options.step_k):
             try:
                 all_kmers1[sl[s:s+options.k]] +=1
                 cnt1 += 1

@@ -48,7 +48,8 @@ def parse_options(argv):
     optional.add_option('-s', '--fn_sample_ratio', dest = 'fn_sample_ratio', metavar = 'FILE', help = 'Sample Ratios in relation to yours', default = os.path.join(os.path.realpath(__file__).rsplit('/',1)[:-1][0] ,'data','sampleRatios/TCGA_sample_a_ratio_uq.tsv'))
     optional.add_option('-d', '--mask-filter', dest = 'filt', help = 'Mask all readcounts below this integer', default = '0')
     optional.add_option('-k', '', dest = 'k', type = 'int', help = 'Length of k-mer for alignmentfree counting [27]', default = 27)
-    optional.add_option('-R', '--reads_kmer', dest = 'kmer_thresh', type = 'int', help = 'Number of active reads per sample that are required for k-mer counting [50000]', default = 50000)
+    optional.add_option('-R', '--reads_kmer', dest = 'kmer_thresh', type = 'float', help = 'Required active reads per sample [50000] / if btw 0 and 1 fraction of input reads considered', default = 50000)
+    optional.add_option('-S', '--step_k', dest = 'step_k', type = 'int', help = 'Step-size for k-mer counting [4]', default = 4)
     
     parser.add_option_group(sampleinput)
     parser.add_option_group(optional)
