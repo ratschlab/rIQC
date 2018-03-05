@@ -26,11 +26,16 @@ def get_counts_from_single_bam(fn_bam, regions):
         
     samfile = pysam.Samfile(fn_bam, 'rb')
     refseqs = samfile.references
-    cnts = []
+    cnts = sp.zeros((regions.shape[0], 2), dtype='float')
     t0 = time.time()
     
-    
-    for i, rec in enumerate(regions):
+    if len(regions.shape) > 1:
+        sidx = sp.argsort(regions[:, 0])
+    else:
+        sidx = sp.argsort(regions)
+
+    for i, ii in enumerate(sidx):
+        rec = regions[ii]
         if i > 0 and i % 100 == 0:
             print '%i rounds to go. ETA %.0f seconds' % (regions.shape[0] - i, (time.time() - t0) / i * (regions.shape[0] - i))
         if len(regions.shape) == 1:
@@ -50,19 +55,25 @@ def get_counts_from_single_bam(fn_bam, regions):
             start2 = int(rec[1].split(':')[1].split('-')[0])
             end2   = int(rec[1].split(':')[1].split('-')[1])
         try:
-            cnt1    = len([1 for read in samfile.fetch(chrm, start1, end1) if not read.is_secondary]) #Otherwise does not match firebrowse            
+            #cnt1    = len([1 for read in samfile.fetch(chrm, start1, end1) if not (read.is_secondary)]) #Otherwise does not match firebrowse            
+            cnt1 = int(sp.ceil(sp.sum([sp.sum((sp.array(read.positions) >= start1) & (sp.array(read.positions) < end1)) for read in samfile.fetch(chrm, start1, end1) if not read.is_secondary]) / 50.0))
             if start2 is None:
                 cnt2 = cnt1
             else:
-                cnt2    = len([1 for read in samfile.fetch(chrm, start2, end2) if not read.is_secondary]) #Otherwise does not match firebrowse
+                #cnt2    = len([1 for read in samfile.fetch(chrm, start2, end2) if not (read.is_secondary)]) #Otherwise does not match firebrowse
+                cnt2 = int(sp.ceil(sp.sum([sp.sum((sp.array(read.positions) >= start2) & (sp.array(read.positions) < end2)) for read in samfile.fetch(chrm, start2, end2) if not read.is_secondary]) / 50.0))
+            #print '%s\t%s\tcnt1: %i\tcnt2: %i' % (rec[0], rec[1], cnt1, cnt2) 
         except ValueError:
             print >> sys.stderr, 'Ignored %s' % chrm
             cnt1 = 1
             cnt2 = 1
         finally:
-            cnts.append([cnt1, cnt2])
+            #cnts.append([cnt1, cnt2])
+            cnts[ii, :] = [cnt1, cnt2]
     samfile.close()
-    return sp.array(cnts, dtype='float').ravel('C')
+
+    return cnts.ravel('C')
+    #return sp.array(cnts, dtype='float').ravel('C')
 
 def get_counts_from_multiple_bam(fn_bams, regions):
     """ This is a wrapper to concatenate counts for a given list of bam
