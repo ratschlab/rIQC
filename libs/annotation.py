@@ -8,20 +8,6 @@ import usefulTools as ut
 import os
 
 
-def getFullAnnotationTable():
-    fn_anno = os.path.realpath(__file__).rsplit('/',2)[:-2][0] + '%s' % ('/annotations/allExonQuantAnno.dat')
-    assert os.path.exists(fn_anno), 'Can not find exon annotation file in designated location'
-    data = sp.loadtxt(fn_anno, delimiter = '\t', dtype = 'string')
-    ### remove non chr contigs
-    chr_whitelist = [str(x) for x in range(23)]
-    chr_whitelist.extend(['chr%i' % i for i in range(23)])
-    chr_whitelist.extend(['chrx', 'chry', 'chrm', 'x', 'y', 'm', 'mt'])
-    k_idx = sp.array([x.split(':')[0].lower() in chr_whitelist for x in data], dtype = 'bool')#sp.array([x.lower() in chr_whitelist for x in exonTgene[:, 2]], dtype='bool')
-    data = data[k_idx]
-
-    return data
-
-
 def getAnnotationTable(options):
     if options.fn_genes == '-':
         if os.path.exists(options.fn_anno_tmp):
