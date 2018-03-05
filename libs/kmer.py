@@ -3,6 +3,7 @@ import scipy as sp
 import os
 import time
 import cPickle
+import gzip
 import numpy.random as npr
 npr.seed(23)
 
@@ -16,7 +17,11 @@ def __read_genome(fname):
 
     seq = []
     curr_chrm = ''
-    for l, line in enumerate(open(fname, 'r')):
+    if fname.endswith('.gz'):
+        fh = gzip.open(fname, 'r')
+    else:
+        fh = open(fname, 'r')
+    for l, line in enumerate(fh):
         if line[0] == '>':
             if curr_chrm != '':
                 yield (curr_chrm, ''.join(seq))
@@ -26,6 +31,7 @@ def __read_genome(fname):
             seq.append(line.strip())
     if curr_chrm != '':
         yield (curr_chrm, ''.join(seq))
+    fh.close()
 
 def __reverse_complement(seq):
 
@@ -134,10 +140,12 @@ def get_counts_from_single_fastq(fn_fastq, kmers1, kmers2, options):
     print 'Processing %s' % fn_fastq
     cnt = 0
     cnt1 = 0
-    for l, line in enumerate(open(fn_fastq, 'r')):
+    if fn_fastq.endswith('gz'):
+        fh = gzip.open(fn_fastq, 'r')
+    else:
+        fh = open(fn_fastq, 'r')
+    for l, line in enumerate(fh):
         if l % 4 != 1:
-            continue
-        if use_fraction and npr.random() > options.kmer_thresh:
             continue
         cnt += 1
         if not use_fraction and cnt1 > options.kmer_thresh:
@@ -147,6 +155,8 @@ def get_counts_from_single_fastq(fn_fastq, kmers1, kmers2, options):
             if cnt % 100000 == 0:
                 sys.stdout.write(' processed %i reads - %i (%.2f%%) used for quantification\n' % (cnt, cnt1, cnt1 / float(cnt) * 100))
             sys.stdout.flush()
+        if use_fraction and npr.random() > options.kmer_thresh:
+            continue
         sl = line.strip()
         slr = __reverse_complement(sl)
         for s in range(0, len(sl) - options.k + 1, options.step_k):
@@ -174,5 +184,6 @@ def get_counts_from_single_fastq(fn_fastq, kmers1, kmers2, options):
                 break
             except KeyError:
                 pass
+    fh.close()
 
     return sp.array([[sp.sum([all_kmers1[x] for x in kmers1[y]]), sp.sum([all_kmers2[x] for x in kmers2[y]])] for y in range(len(kmers1))], dtype='float').ravel('C') 
