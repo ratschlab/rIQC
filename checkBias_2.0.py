@@ -35,6 +35,7 @@ def parse_options(argv):
     sampleinput.add_option('-w', '--whitelist', dest = 'fn_white', metavar = 'FILE',   help = 'White list with ids',      default = '-')
     sampleinput.add_option('-G', '--genome', dest = 'fn_genome', metavar = 'FILE', help = 'Path to genome file in fasta', default = '-')
     sampleinput.add_option('-i', '--genelist', dest = 'fn_genes', metavar = 'FILE', help = 'file with genenames to use', default = '-')
+    sampleinput.add_option('',   '--separate_files', dest = 'separate_files', action = "store_true", help = 'Consider all input files individually [off]', default = False)
 
     sampleoutput = OptionGroup(parser, 'Output')
     sampleoutput.add_option('-o', '--fnout',    dest = 'fn_out',   metavar = 'FILE',   help = 'prefix for output',        default = 'out')
@@ -146,7 +147,10 @@ def main():
         kmers1, kmers2 = prepare_kmers(options, exonTgene) 
         kmers1, kmers2 = clean_kmers(options, kmers1, kmers2)
         fastq_list = glob.glob(os.path.join(options.fastq_dir))
-        header = fastq_list
+        if options.separate_files:
+            header = fastq_list
+        else:
+            header = ','.join(fastq_list)
         data = get_counts_from_multiple_fastq(fastq_list, kmers1, kmers2, options)
         exonpos = exonTgene[:, :2].ravel('C')
     elif options.dir_bam != '-':
@@ -180,7 +184,6 @@ def main():
     if (options.fn_exonq == '-') | (options.qmode == 'raw'):
         exonl = sp.array([int(x.split(':')[1].split('-')[1]) - int(x.split(':')[1].split('-')[0]) + 1 for x in exonpos], dtype='float') / 1000.
         data /= sp.tile(exonl[:, sp.newaxis], data.shape[1])
-        #data /= sp.hstack([exonl[:, sp.newaxis] for x in xrange(data.shape[0] / exonl.shape[0])]).ravel(1)  
 
 
     ### Subset to whitelist

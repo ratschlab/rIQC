@@ -108,12 +108,12 @@ def clean_kmers(options, kmers1, kmers2):
     for i, rec in enumerate(kmers1):
         size_old = len(rec)
         total += size_old
-        kmers1[i] = filter(lambda x: all_kmers1[x] == 1, rec)
+        kmers1[i] = filter(lambda x: all_kmers1[x] == 1 and not x in all_kmers2, rec)
         removed += (size_old - len(kmers1[i]))
     for i, rec in enumerate(kmers2):
         size_old = len(rec)
         total += size_old
-        kmers2[i] = filter(lambda x: all_kmers2[x] == 1, rec)
+        kmers2[i] = filter(lambda x: all_kmers2[x] == 1 and not x in all_kmers1, rec)
         removed += (size_old - len(kmers2[i]))
     print 'Removed %i non-unique kmers (%.2f percent)' % (removed, removed / float(total) * 100)
 
@@ -123,12 +123,13 @@ def get_counts_from_multiple_fastq(fn_fastq, kmers1, kmers2, options):
     """ This is a wrapper to concatenate counts for a given list of fastq
         files"""
     
-    if len(fn_fastq) == 1:
-        return get_counts_from_single_fastq(fn_fastq[0], kmers1, kmers2, options)[:, sp.newaxis]
+    if not options.separate_files:
+        return get_counts_from_single_fastq(fn_fastq, kmers1, kmers2, options)[:, sp.newaxis]
     else:
         return sp.hstack([get_counts_from_single_fastq(fn_fastq[i], kmers1, kmers2, options)[:,sp.newaxis] for i in range(len(fn_fastq))])
 
-def get_counts_from_single_fastq(fn_fastq, kmers1, kmers2, options):
+
+def get_counts_from_single_fastq(fn_fastqs, kmers1, kmers2, options):
 
     all_kmers1 = dict([[_, 0] for s in kmers1 for _ in s])
     all_kmers2 = dict([[_, 0] for s in kmers2 for _ in s])
@@ -137,53 +138,54 @@ def get_counts_from_single_fastq(fn_fastq, kmers1, kmers2, options):
     if options.kmer_thresh <= 1:
         use_fraction = True
 
-    print 'Processing %s' % fn_fastq
-    cnt = 0
-    cnt1 = 0
-    if fn_fastq.endswith('gz'):
-        fh = gzip.open(fn_fastq, 'r')
-    else:
-        fh = open(fn_fastq, 'r')
-    for l, line in enumerate(fh):
-        if l % 4 != 1:
-            continue
-        cnt += 1
-        if not use_fraction and cnt1 > options.kmer_thresh:
-            break
-        if cnt % 10000 == 0:
-            sys.stdout.write('.')
-            if cnt % 100000 == 0:
-                sys.stdout.write(' processed %i reads - %i (%.2f%%) used for quantification\n' % (cnt, cnt1, cnt1 / float(cnt) * 100))
-            sys.stdout.flush()
-        if use_fraction and npr.random() > options.kmer_thresh:
-            continue
-        sl = line.strip()
-        slr = __reverse_complement(sl)
-        for s in range(0, len(sl) - options.k + 1, options.step_k):
-            try:
-                all_kmers1[sl[s:s+options.k]] +=1
-                cnt1 += 1
+    for fn_fastq in fn_fastqs:
+        print 'Processing %s' % fn_fastq
+        cnt = 0
+        cnt1 = 0
+        if fn_fastq.endswith('gz'):
+            fh = gzip.open(fn_fastq, 'r')
+        else:
+            fh = open(fn_fastq, 'r')
+        for l, line in enumerate(fh):
+            if l % 4 != 1:
+                continue
+            cnt += 1
+            if not use_fraction and cnt1 > options.kmer_thresh:
                 break
-            except KeyError:
-                pass
-            try:
-                all_kmers1[slr[s:s+options.k]] +=1
-                cnt1 += 1
-                break
-            except KeyError:
-                pass
-            try:
-                all_kmers2[sl[s:s+options.k]] +=1
-                cnt1 += 1
-                break
-            except KeyError:
-                pass
-            try:
-                all_kmers2[slr[s:s+options.k]] +=1
-                cnt1 += 1
-                break
-            except KeyError:
-                pass
-    fh.close()
+            if cnt % 10000 == 0:
+                sys.stdout.write('.')
+                if cnt % 100000 == 0:
+                    sys.stdout.write(' processed %i reads - %i (%.2f%%) used for quantification\n' % (cnt, cnt1, cnt1 / float(cnt) * 100))
+                sys.stdout.flush()
+            if use_fraction and npr.random() > options.kmer_thresh:
+                continue
+            sl = line.strip()
+            slr = __reverse_complement(sl)
+            for s in range(0, len(sl) - options.k + 1, options.step_k):
+                try:
+                    all_kmers1[sl[s:s+options.k]] +=1
+                    cnt1 += 1
+                    break
+                except KeyError:
+                    pass
+                try:
+                    all_kmers1[slr[s:s+options.k]] +=1
+                    cnt1 += 1
+                    break
+                except KeyError:
+                    pass
+                try:
+                    all_kmers2[sl[s:s+options.k]] +=1
+                    cnt1 += 1
+                    break
+                except KeyError:
+                    pass
+                try:
+                    all_kmers2[slr[s:s+options.k]] +=1
+                    cnt1 += 1
+                    break
+                except KeyError:
+                    pass
+        fh.close()
 
     return sp.array([[sp.sum([all_kmers1[x] for x in kmers1[y]]), sp.sum([all_kmers2[x] for x in kmers2[y]])] for y in range(len(kmers1))], dtype='float').ravel('C') 
