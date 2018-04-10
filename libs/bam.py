@@ -1,16 +1,16 @@
+import pdb
+
 import pysam
 import time
 import scipy as sp
 import sys
 import os
 import warnings
-import pdb
-from sets import Set
 
 def get_counts_from_single_bam(fn_bam, regions):
-
     """This function extracts read counts from a given bam file spanning 
        a set of given intervals."""
+    print "DEBUG : bam.py : get_counts_from_single_bam()"
 
     if not os.path.exists(fn_bam + '.bai'):
         #raise Exception('\nERROR: alignment file %s seems not to be indexed\n' % fn_bam)
@@ -78,7 +78,8 @@ def get_counts_from_single_bam(fn_bam, regions):
 def get_counts_from_multiple_bam(fn_bams, regions):
     """ This is a wrapper to concatenate counts for a given list of bam
         files"""
-    
+    print "DEBUG : bam.py : get_counts_from_multiple_bam()"
+
     if len(fn_bams) == 1:
         return get_counts_from_single_bam(fn_bams[0], regions)[:, sp.newaxis]
     else:

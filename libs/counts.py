@@ -1,11 +1,16 @@
 import pysam
+import pdb
+
 import os
 import scipy as sp
 import fnmatch
-import pdb
 import gzip
 import pandas
+
+
 def readExpData(fn, mode = 'raw'):
+    print "DEBUG : counts.py : readExpData()"
+
     assert mode in ['rpkm','raw'], 'Function is called with unknown mode'
     if fn.endswith('gz'):
         IN     = gzip.open(fn ,'r')
@@ -30,7 +35,8 @@ def readExpData(fn, mode = 'raw'):
     return exonpos.astype('string').ravel(), header, data
 
 def readExpDataBam(base_dir):
-#    base_dir = "/cbio/grlab/projects/TCGA/PanCancer/icgc_qc"
+    print "DEBUG : counts.py : readExpDataBam()"
+    # base_dir = "/cbio/grlab/projects/TCGA/PanCancer/icgc_qc"
     allfiles = os.listdir(base_dir)
     allfiles = fnmatch.filter(allfiles, '*.tsv')
     for i,f in enumerate(allfiles):

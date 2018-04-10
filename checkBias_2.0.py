@@ -1,13 +1,12 @@
 import scipy as sp
 import scipy.stats as spst
 import numpy as np
-
-
 import sys
 import os
 import pdb
-import glob
 import fnmatch
+
+import glob
 from optparse import OptionParser, OptionGroup
 
 from libs.annotation import *
@@ -22,6 +21,8 @@ import logging
 ### may not be necessary
 
 def parse_options(argv):
+
+    print "DEBUG : checkBias_2.0.py : parse_options()"
 
     parser = OptionParser()
     
@@ -78,6 +79,7 @@ def parse_options(argv):
     
 
 def whitelisting(options, header, data):
+    print "DEBUG : checkBias_2.0.py : whitelisting()"
     whitelist = sp.loadtxt(options.fn_white, delimiter = '\t', dtype = 'string')
     midx_m    = sp.in1d(header, whitelist)
     tags      = sp.array([x.split('-')[3] for x in header])
@@ -88,6 +90,7 @@ def whitelisting(options, header, data):
 
 
 def calculateBias(exonTgene, data, exonpos):
+    print "DEBUG : checkBias_2.0.py : calculateBias()"
     mycounts = sp.zeros((exonTgene.shape[0], data.shape[1], 2))
 
     for i,rec in enumerate(exonTgene):
@@ -118,6 +121,9 @@ def main():
     if options.isVerbose:
         consoleHandler = logging.StreamHandler()
         log.addHandler(consoleHandler)
+
+    print "DEBUG : checkBias_2.0.py : main()"
+
     ### Read annotation from file
     logging.info("Reading Annotation from file")
     exonTgene = getAnnotationTable(options)
@@ -165,7 +171,7 @@ def main():
         exonpos = exonTgene[:, :2].ravel('C')
     elif options.fn_bam != '-':
         if options.count_only:
-            print "WARNING: Running only gene counts"
+            print "WARNING : Running only gene counts"
             exonTable = sp.sort(exonTgene[:,[0,1]].ravel())        
             data = get_counts_from_single_bam(options.fn_bam,exonTable)
             sp.savetxt(options.fn_out+'counts.tsv', sp.vstack((exonTable,data[::2])).T, delimiter = '\t', fmt = '%s')
@@ -233,8 +239,8 @@ def main():
 
     logging.info("Tukey Filter is estimated to be %f" % (iqr+sp.percentile(vals, 75)))
     if len(vals) > 1:
-        print "Tukey Filter is estimated to be %f" % (iqr+sp.percentile(vals, 75))
-        print "Tukey Filter is estimated to be %f" % (sp.percentile(vals, 25)-iqr)
+        print "INFO : Tukey Filter is estimated to be %f" % (iqr+sp.percentile(vals, 75))
+        print "INFO : Tukey Filter is estimated to be %f" % (sp.percentile(vals, 25)-iqr)
 
     sp.savetxt('%s_sample_a_ratio_%s.tsv' % (options.fn_out,options.length), sp.vstack((header, vals.astype('string'))).T, delimiter = '\t', fmt = '%s')
     
