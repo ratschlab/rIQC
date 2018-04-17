@@ -7,6 +7,20 @@ import time
 import usefulTools as ut
 import os
 
+# Some Numbers
+NMB_CHR = 23
+
+# GFF and GTF column numbers
+SEQ_NAME = 0    # name of chromosome or scaffold
+SOURCE = 1      # name of program that generated this feature
+FEATURE = 2     # feature type name (e.g. "gene", "transcript", "exon")
+                #  type of feature (term or accession from SOFA sequence ontology)
+START = 3       # start position of feature (seq numbering starting at 1)
+END = 4         # end position of feature (seq numbering starting at 1)
+SCORE = 5       # a floating point value
+STRAND = 6      # + (forward) or - (reverse)
+FRAME = 7       # 0/1/2 : position in codon
+ATTRIBUTE = 8   # semicolon-separated list of tag-value pairs
 
 def getAnnotationTable(options):
     if options.fn_genes == '-':
@@ -23,8 +37,8 @@ def getAnnotationTable(options):
             sp.savetxt(options.fn_anno_tmp, exonTgene, delimiter='\t', fmt='%s')
 
         ### remove non chr contigs
-        chr_whitelist = [str(x) for x in range(23)]
-        chr_whitelist.extend(['chr%i' % i for i in range(23)])
+        chr_whitelist = [str(x) for x in range(NMB_CHR)]
+        chr_whitelist.extend(['chr%i' % i for i in range(NMB_CHR)])
         chr_whitelist.extend(['chrx', 'chry', 'chrm', 'x', 'y', 'm', 'mt'])
         k_idx = sp.array([x.lower() in chr_whitelist for x in exonTgene[:, 2]], dtype='bool')
         exonTgene = exonTgene[k_idx, :]
@@ -96,27 +110,27 @@ def getOverlapGenes(fn, format):
     if format == 'gtf':
         for l in open(fn, 'r'):
             ## comments
-            if l[0] == '#':
+            if l[SEQ_NAME] == '#':
                 continue
             lSpl = l.strip('\n').split('\t')
-            if lSpl[2].lower() != 'gene':
+            if lSpl[FEATURE].lower() != 'gene':
                 continue
-            tags = get_tags_gtf(lSpl[8])
-            data.append([tags['gene_id'], '%s:%s-%s' % (lSpl[0], lSpl[3], lSpl[4])])
+            tags = get_tags_gtf(lSpl[ATTRIBUTE])
+            data.append([tags['gene_id'], '%s:%s-%s' % (lSpl[SEQ_NAME], lSpl[START], lSpl[END])])
     elif format in ['gff', 'gff3']:
         for l in open(fn, 'r'):
             ## comments
-            if l[0] == '#':
+            if l[SEQ_NAME] == '#':
                 continue
             lSpl = l.strip('\n').split('\t')
-            if not lSpl[2].lower() in ['gene', 'lincrna_gene', 'mirna_gene', 'processed_transcript', 'rrna_gene',
+            if not lSpl[FEATURE].lower() in ['gene', 'lincrna_gene', 'mirna_gene', 'processed_transcript', 'rrna_gene',
                                        'snrna_gene', 'snorna_gene']:
                 continue
-            tags = get_tags_gff3(lSpl[8])
+            tags = get_tags_gff3(lSpl[ATTRIBUTE])
             try:
-                data.append([tags['ID'], '%s:%s-%s' % (lSpl[0], lSpl[3], lSpl[4])])
+                data.append([tags['ID'], '%s:%s-%s' % (lSpl[SEQ_NAME], lSpl[START], lSpl[END])])
             except KeyError:
-                data.append([tags['Parent'], '%s:%s-%s' % (lSpl[0], lSpl[3], lSpl[4])])
+                data.append([tags['Parent'], '%s:%s-%s' % (lSpl[SEQ_NAME], lSpl[START], lSpl[END])])
 
                 ### data contains two   o columns: gene_ID, GeneLocus (e.g., chr7:130020290-130027948:+)
     data = sp.array(data)
@@ -186,42 +200,42 @@ def readinganno(fn, overlapgenes, format):
     ### collect transcript information
     transcripts = dict()
     for l in open(fn, 'r'):
-        if l[0] == '#':
+        if l[SEQ_NAME] == '#':
             continue
         lSpl = l.strip('\n').split('\t')
-        if lSpl[2].lower() != 'exon':
+        if lSpl[FEATURE].lower() != 'exon':
             continue
         if format == 'gtf':
-            tags = get_tags_gtf(lSpl[8])
+            tags = get_tags_gtf(lSpl[ATTRIBUTE])
             try:
-                transcripts[tags['transcript_id']].append('-'.join([lSpl[3], lSpl[4]]))
+                transcripts[tags['transcript_id']].append('-'.join([lSpl[START], lSpl[END]]))
             except KeyError:
-                transcripts[tags['transcript_id']] = ['-'.join([lSpl[3], lSpl[4]])]
+                transcripts[tags['transcript_id']] = ['-'.join([lSpl[START], lSpl[END]])]
         else:
-            tags = get_tags_gff3(lSpl[8])
+            tags = get_tags_gff3(lSpl[ATTRIBUTE])
             try:
-                transcripts[tags['Parent']].append('-'.join([lSpl[3], lSpl[4]]))
+                transcripts[tags['Parent']].append('-'.join([lSpl[START], lSpl[END]]))
             except KeyError:
-                transcripts[tags['Parent']] = ['-'.join([lSpl[3], lSpl[4]])]
+                transcripts[tags['Parent']] = ['-'.join([lSpl[START], lSpl[END]])]
 
     #### read transcript annotation
     for l in open(fn, 'r'):
-        if l[0] == '#':
+        if l[SEQ_NAME] == '#':
             continue
         lSpl = l.strip('\n').split('\t')
         if format == 'gtf':
-            if lSpl[2] != 'transcript':
+            if lSpl[FEATURE] != 'transcript':
                 continue
-            tags = get_tags_gtf(lSpl[8])
+            tags = get_tags_gtf(lSpl[ATTRIBUTE])
             key = tags['gene_id']
             if key in overlapgenes:
                 continue
-            value = '%s:%s:%s' % (lSpl[0], ','.join(transcripts[tags['transcript_id']]), lSpl[6])
+            value = '%s:%s:%s' % (lSpl[SEQ_NAME], ','.join(transcripts[tags['transcript_id']]), lSpl[STRAND])
         elif format in ['gff', 'gff3']:
-            if not lSpl[2].lower() in ['transcript', 'pseudogenic_transcript', 'snrna', 'snorna', 'rrna', 'pseudogene',
+            if not lSpl[FEATURE].lower() in ['transcript', 'pseudogenic_transcript', 'snrna', 'snorna', 'rrna', 'pseudogene',
                                        'processed_transcript', 'processed_pseudogene', 'lincrna', 'mirna']:
                 continue
-            tags = get_tags_gff3(lSpl[8])
+            tags = get_tags_gff3(lSpl[ATTRIBUTE])
             try:
                 key = tags['Parent']
             except KeyError:
@@ -232,7 +246,7 @@ def readinganno(fn, overlapgenes, format):
             if key in overlapgenes:
                 continue
             try:
-                value = '%s:%s:%s' % (lSpl[0], ','.join(transcripts[tags['ID']]), lSpl[6])
+                value = '%s:%s:%s' % (lSpl[SEQ_NAME], ','.join(transcripts[tags['ID']]), lSpl[STRAND])
             except KeyError:
                 continue
         try:
