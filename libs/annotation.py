@@ -60,9 +60,9 @@ def getAnnotationTable(options):
             sp.savetxt(options.fn_anno_tmp, exonTgene, delimiter='\t', fmt='%s')
 
         ### remove non chr contigs
-        exonTgene = removeNonChrContigs()
+        exonTgene = removeNonChrContigs(exonTgene)
 
-        ### filter exonTgene to only retain genes we are interested in (length, splicing, etc)
+        ## filter exonTgene to only retain genes we are interested in (length, splicing, etc)
         exonTgene = filterToInterestingGenes(exonTgene, options.length)
 
     else:
