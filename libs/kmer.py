@@ -74,6 +74,7 @@ def prepare_kmers(regions, fn_genome, k):
                 # MM: first consecutive exon
                 start1 = int(rec[0].split(':')[1].split('-')[0])
                 end1 = int(rec[0].split(':')[1].split('-')[1])
+
                 # MM: last consecutive exon
                 start2 = int(rec[1].split(':')[1].split('-')[0])
                 end2 = int(rec[1].split(':')[1].split('-')[1])
@@ -91,11 +92,12 @@ def prepare_kmers(regions, fn_genome, k):
 
 
 def clean_kmers(kmers1, kmers2, fn_pickle_all, fn_pickle_filt, k, fn_genome):
+
     if fn_pickle_all is not None:
         kmer_pickle = fn_pickle_all
     else:
         kmer_pickle = 'all_kmers_k%i.pickle' % k
-
+    
     print 'Making kmers unique'
     if os.path.exists(kmer_pickle):
         (all_kmers1, all_kmers2) = cPickle.load(open(kmer_pickle, 'r'))
@@ -161,6 +163,7 @@ def get_counts_from_multiple_fastq(fn_fastq, kmers1, kmers2, options):
 
 
 def __get_counts_from_single_fastq(fn_fastqs, kmers1, kmers2, options):
+
     all_kmers1 = dict([[_, 0] for s in kmers1 for _ in s])
     all_kmers2 = dict([[_, 0] for s in kmers2 for _ in s])
 

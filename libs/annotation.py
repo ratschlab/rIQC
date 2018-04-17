@@ -74,7 +74,6 @@ def get_annotation_table(fn_genes, fn_anno_tmp, fn_anno, proteinCodingFilter, le
 
     return exon_t_gene
 
-
 def __get_transcript_length(rec):
     # list of all exon-intervals
     ex_pieces = sp.array(rec.split(':')[1].split(','))
@@ -121,7 +120,7 @@ def __get_overlap_genes(fn, format):
             if l[SEQ_NAME] == '#':
                 continue
             lSpl = l.strip('\n').split('\t')
-            if lSpl[FEATURE].lower() != 'gene':
+            if lSpl[2].lower() != 'gene':
                 continue
             tags = __get_tags_gtf(lSpl[ATTRIBUTE])
             data.append([tags['gene_id'], '%s:%s-%s' % (lSpl[SEQ_NAME], lSpl[START], lSpl[END])])
@@ -131,7 +130,7 @@ def __get_overlap_genes(fn, format):
             if l[SEQ_NAME] == '#':
                 continue
             lSpl = l.strip('\n').split('\t')
-            if not lSpl[FEATURE].lower() in ['gene', 'lincrna_gene', 'mirna_gene', 'processed_transcript', 'rrna_gene',
+            if not lSpl[2].lower() in ['gene', 'lincrna_gene', 'mirna_gene', 'processed_transcript', 'rrna_gene',
                                        'snrna_gene', 'snorna_gene']:
                 continue
             tags = __get_tags_gff(lSpl[ATTRIBUTE])
@@ -286,6 +285,9 @@ def __process_single_transcript_genes(tcrpt):
     assert len(tcrpt) == 1, "Too many transcripts to process"
 
     # checking that we have at least two exons
+    return data
+
+
     tcrpt = tcrpt[0]
     if tcrpt.find(',') == -1:
         return None

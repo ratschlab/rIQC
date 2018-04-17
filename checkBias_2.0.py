@@ -44,7 +44,7 @@ def parse_options(argv):
     sample_output.add_option('', '--pickle_filt', dest='fn_pickle_filt', metavar='FILE', help='Pickle file for storing filtered/cleaned kmers', default=None)
 
     opt_gen = OptionGroup(parser, 'General Options')
-
+    
     opt_gen.add_option('', '--quant',           dest='qMode', metavar='STRING', help='What type of quantification to use [rpkm,raw]', default='raw')
     opt_gen.add_option('', '--pseudo_count_ON', dest='doPseudo', action="store_true", help='Add Pseudocounts to ratio', default=False)
     opt_gen.add_option('', '--length',          dest='readLength', metavar='STRING', help='Length filter [uq,mq,lq]', default='uq')
@@ -61,6 +61,9 @@ def parse_options(argv):
     opt_gen.add_option('', '--save_counts_ON',  dest='saveCounts', action='store_true', help='Store the exon counts in .npy and .tsv files for later use', default=False)
     opt_gen.add_option('', '--scale_counts_ON', dest='scaleCounts', action='store_true', help='Scale counts with pre-computed scaling factors for degradation compensation', default=False)
 
+    opt_gen.add_option('', '--sparse_bam', dest='sparse_bam', action="store_true", help='Input BAM files are in sparse hdf5 format [off]', default=False)
+    opt_gen.add_option('', '--plot', dest='doPlot', action="store_true", help='Plot figures', default=False)
+    
     opt_kmer = OptionGroup(parser, 'Options for k-mer counting')
 
     opt_kmer.add_option('', '--kmer_length', dest='k', type='int', help='Length of k-mer for alignmentfree counting', default=27)
@@ -228,6 +231,7 @@ def main():
 
 
     logging.info("Calculate Bias and Find Median")
+
     vals = []
     for i in xrange(my_counts.shape[1]):
         if options.doPseudo:
@@ -243,6 +247,7 @@ def main():
 
     vals = sp.array(vals)
 
+    sidx = sp.argsort(vals)
     iqr = ((sp.percentile(vals, 75) - sp.percentile(vals, 25)) * 1.5)
 
     logging.info("Tukey Filter is estimated to be %f" % (iqr + sp.percentile(vals, 75)))
