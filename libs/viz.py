@@ -7,7 +7,6 @@ import scipy as sp
 matplotlib.use('AGG')
 
 def plotBias(vals, fn_plot, myidx, logScale = False, refname = 'TCGA'):
-    print "DEBUG : viz.py : plotBias()"
 
     iqr    = ( (sp.percentile(vals[~myidx],75) - sp.percentile(vals[~myidx],25) ) * 1.5)
     iqr2    = ( (sp.percentile(vals[myidx],75) - sp.percentile(vals[myidx],25) ) * 1.5)

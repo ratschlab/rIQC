@@ -15,7 +15,6 @@ REV_DIC = {'A':'T',
            'N':'N'}
 
 def __read_genome(fname):
-    print "DEBUG : kmer.py : __read_genome()"
 
     seq = []
     curr_chrm = ''
@@ -36,12 +35,10 @@ def __read_genome(fname):
     fh.close()
 
 def __reverse_complement(seq):
-    print "DEBUG : kmer.py : __reverse_complement()"
 
     return ''.join([REV_DIC[_] for _ in seq][::-1])
              
 def prepare_kmers(options, regions):
-    print "DEBUG : kmer.py : __prepare_kmers()"
 
     print 'Preparing genomic kmers'
     cnt = 0
@@ -78,7 +75,6 @@ def prepare_kmers(options, regions):
     return (kmers1, kmers2)
 
 def clean_kmers(options, kmers1, kmers2):
-    print "DEBUG : kmer.py : __clean_kmers()"
 
     kmer_pickle = 'all_kmers_k%i.pickle' % options.k
     print 'Making kmers unique'
@@ -127,7 +123,6 @@ def clean_kmers(options, kmers1, kmers2):
 def get_counts_from_multiple_fastq(fn_fastq, kmers1, kmers2, options):
     """ This is a wrapper to concatenate counts for a given list of fastq
         files"""
-    print "DEBUG : kmer.py : get_counts_from_multiple_fastq()"
     
     if not options.separate_files:
         return get_counts_from_single_fastq(fn_fastq, kmers1, kmers2, options)[:, sp.newaxis]
@@ -136,7 +131,6 @@ def get_counts_from_multiple_fastq(fn_fastq, kmers1, kmers2, options):
 
 
 def get_counts_from_single_fastq(fn_fastqs, kmers1, kmers2, options):
-    print "DEBUG : kmer.py : get_counts_from_single_fastq()"
 
     all_kmers1 = dict([[_, 0] for s in kmers1 for _ in s])
     all_kmers2 = dict([[_, 0] for s in kmers2 for _ in s])

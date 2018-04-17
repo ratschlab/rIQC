@@ -12,7 +12,6 @@ import h5py
 def get_counts_from_single_bam_sparse(fn_bam, regions):
     """This function extracts read counts from a given sparse bam file spanning 
        a set of given intervals."""
-    print "DEBUG : bam_sparse.py : get_counts_from_single_bam_sparse()"
 
     if not os.stat(fn_bam).st_size > 0:
         warnings.warn('WARNING: alignment file %s seems to be empty and will be skipped! \n' % fn_bam)
@@ -76,7 +75,6 @@ def get_counts_from_single_bam_sparse(fn_bam, regions):
 def get_counts_from_multiple_bam_sparse(fn_bams, regions):
     """ This is a wrapper to concatenate counts for a given list of bam
         files"""
-    print "DEBUG : bam_sparse.py : get_counts_from_multiple_bam_sparse()"
 
     if len(fn_bams) == 1:
         return get_counts_from_single_bam_sparse(fn_bams[0], regions)[:, sp.newaxis]

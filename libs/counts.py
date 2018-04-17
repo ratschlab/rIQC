@@ -9,7 +9,6 @@ import pandas
 
 
 def readExpData(fn, mode = 'raw'):
-    print "DEBUG : counts.py : readExpData()"
 
     assert mode in ['rpkm','raw'], 'Function is called with unknown mode'
     if fn.endswith('gz'):
@@ -35,7 +34,6 @@ def readExpData(fn, mode = 'raw'):
     return exonpos.astype('string').ravel(), header, data
 
 def readExpDataBam(base_dir):
-    print "DEBUG : counts.py : readExpDataBam()"
     # base_dir = "/cbio/grlab/projects/TCGA/PanCancer/icgc_qc"
     allfiles = os.listdir(base_dir)
     allfiles = fnmatch.filter(allfiles, '*.tsv')

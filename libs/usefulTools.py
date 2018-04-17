@@ -8,7 +8,6 @@ def filterBid(allids, sbids):
     gets two id list
     returns matching index
     '''
-    print "DEBUG : usefulTools.py : filterBid()"
 
     if sp.unique(sbids).shape[0]  != sbids.shape[0]:
         warnings.warn("superset ids are not unique: Making it unique")
@@ -27,7 +26,6 @@ def filterBid(allids, sbids):
 
 
 def unique_rows_idx(a, return_counts = False):
-    print "DEBUG : usefulTools.py : unique_rows_idx()"
 
     unique_a = sp.unique(a.view([('', a.dtype)]*a.shape[1]),return_index = True, return_counts = return_counts)
     if return_counts:
@@ -38,7 +36,6 @@ def unique_rows_idx(a, return_counts = False):
 
 def unique_rows(array, index = None, counts = False):
     """Make array unique by rows"""
-    print "DEBUG : usefulTools.py : unique_rows()"
 
     if array.shape[0] == 0:
         if index == True:
@@ -69,7 +66,6 @@ def unique_rows(array, index = None, counts = False):
 
 def sort_rows(array, index = None):
     """Sort array by rows"""
-    print "DEBUG : usefulTools.py : sort_rows()"
 
     ### empty array
     if array.shape[0] == 0:
