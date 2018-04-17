@@ -22,6 +22,29 @@ STRAND = 6      # + (forward) or - (reverse)
 FRAME = 7       # 0/1/2 : position in codon
 ATTRIBUTE = 8   # semicolon-separated list of tag-value pairs
 
+def removeNonChrContigs(exonTgene):
+    chr_whitelist = [str(x) for x in range(NMB_CHR)]
+    chr_whitelist.extend(['chr%i' % i for i in range(NMB_CHR)])
+    chr_whitelist.extend(['chrx', 'chry', 'chrm', 'x', 'y', 'm', 'mt'])
+    k_idx = sp.array([x.lower() in chr_whitelist for x in exonTgene[:, 2]], dtype='bool')
+    return exonTgene[k_idx, :]
+
+def filterToInterestingGenes(exonTgene, length):
+    t_25 = spst.scoreatpercentile(exonTgene[:, 4].astype('float'), 25)
+    t_75 = spst.scoreatpercentile(exonTgene[:, 4].astype('float'), 75)
+
+    if length == 'uq':
+        k_idx = sp.where(exonTgene[:, 4].astype('float') > t_75)[0]
+    elif length == 'mq':
+        k_idx = sp.where((exonTgene[:, 4].astype('float') > t_25) & (exonTgene[:, 4].astype('float') < t_75))[0]
+    elif length == 'lq':
+        k_idx = sp.where(exonTgene[:, 4].astype('float') < t_25)[0]
+    else:
+        raise Exception('--length should be one of: uq, mq, lq -- currently is: %s' % length)
+    return exonTgene[k_idx, :]
+
+
+
 def getAnnotationTable(options):
     if options.fn_genes == '-':
         if os.path.exists(options.fn_anno_tmp):
@@ -37,25 +60,11 @@ def getAnnotationTable(options):
             sp.savetxt(options.fn_anno_tmp, exonTgene, delimiter='\t', fmt='%s')
 
         ### remove non chr contigs
-        chr_whitelist = [str(x) for x in range(NMB_CHR)]
-        chr_whitelist.extend(['chr%i' % i for i in range(NMB_CHR)])
-        chr_whitelist.extend(['chrx', 'chry', 'chrm', 'x', 'y', 'm', 'mt'])
-        k_idx = sp.array([x.lower() in chr_whitelist for x in exonTgene[:, 2]], dtype='bool')
-        exonTgene = exonTgene[k_idx, :]
+        exonTgene = removeNonChrContigs()
 
         ### filter exonTgene to only retain genes we are interested in (length, splicing, etc)
-        t_25 = spst.scoreatpercentile(exonTgene[:, 4].astype('float'), 25)
-        t_75 = spst.scoreatpercentile(exonTgene[:, 4].astype('float'), 75)
+        exonTgene = filterToInterestingGenes(exonTgene, options.length)
 
-        if options.length == 'uq':
-            k_idx = sp.where(exonTgene[:, 4].astype('float') > t_75)[0]
-        elif options.length == 'mq':
-            k_idx = sp.where((exonTgene[:, 4].astype('float') > t_25) & (exonTgene[:, 4].astype('float') < t_75))[0]
-        elif options.length == 'lq':
-            k_idx = sp.where(exonTgene[:, 4].astype('float') < t_25)[0]
-        else:
-            raise Exception('--length should be one of: uq, mq, lq -- currently is: %s' % options.length)
-        exonTgene = exonTgene[k_idx, :]
     else:
         exonTgene = sp.loadtxt(options.fn_genes, delimiter=' ', dtype='string')
     return exonTgene
