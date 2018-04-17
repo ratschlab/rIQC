@@ -222,7 +222,7 @@ def main():
     ### subset to high expression
     logging.info("Make sure I got only reasonably expressed genes")
     ### assuming that i do not have rpkm and not pre-selected genes anyways
-    if options.gene_expression_filter & options.fn_genes == '-' & options.fn_exonq != '-':
+    if (options.gene_expression_filter) & (options.fn_genes == '-') & (options.fn_exonq != '-'):
         primeCov = sp.mean(mycounts[:, :, 0], axis=1) + sp.mean(mycounts[:, :, 1], axis=1)
 
         ### ensure average expression of 1 rpkm across samples
