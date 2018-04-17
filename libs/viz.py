@@ -1,10 +1,9 @@
-import pdb
-
 import matplotlib
+matplotlib.use('AGG')
 import matplotlib.pyplot as plt
 import scipy as sp
+import pdb
 
-matplotlib.use('AGG')
 
 def plotBias(vals, fn_plot, myidx, logScale = False, refname = 'TCGA'):
 

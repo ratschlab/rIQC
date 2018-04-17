@@ -8,14 +8,14 @@ import numpy.random as npr
 
 npr.seed(23)
 
-REV_DIC = {'A':'T',
-           'C':'G',
-           'G':'C',
-           'T':'A',
-           'N':'N'}
+REV_DIC = {'A': 'T',
+           'C': 'G',
+           'G': 'C',
+           'T': 'A',
+           'N': 'N'}
+
 
 def __read_genome(fname):
-
     seq = []
     curr_chrm = ''
     if fname.endswith('.gz'):
@@ -34,12 +34,12 @@ def __read_genome(fname):
         yield (curr_chrm, ''.join(seq))
     fh.close()
 
+
 def __reverse_complement(seq):
-
     return ''.join([REV_DIC[_] for _ in seq][::-1])
-             
-def prepare_kmers(options, regions):
 
+
+def prepare_kmers(options, regions):
     print 'Preparing genomic kmers'
     cnt = 0
     kmers1 = [set() for _ in regions]
@@ -52,30 +52,31 @@ def prepare_kmers(options, regions):
         for i in idx:
             rec = regions[i, :]
             if cnt > 0 and cnt % 100 == 0:
-                print '%i rounds to go. ETA %.0f seconds' % (regions.shape[0] - cnt, (time.time() - t0) / cnt * (regions.shape[0] - cnt))
+                print '%i rounds to go. ETA %.0f seconds' % (
+                regions.shape[0] - cnt, (time.time() - t0) / cnt * (regions.shape[0] - cnt))
             cnt += 1
 
             if len(regions.shape) == 1:
                 start1 = int(rec.split(':')[1].split('-')[0])
-                end1   = int(rec.split(':')[1].split('-')[1])
+                end1 = int(rec.split(':')[1].split('-')[1])
                 start2 = None
-                end2   = None
+                end2 = None
             else:
                 start1 = int(rec[0].split(':')[1].split('-')[0])
-                end1   = int(rec[0].split(':')[1].split('-')[1])
+                end1 = int(rec[0].split(':')[1].split('-')[1])
                 start2 = int(rec[1].split(':')[1].split('-')[0])
-                end2   = int(rec[1].split(':')[1].split('-')[1])
+                end2 = int(rec[1].split(':')[1].split('-')[1])
 
             if end1 - start1 > options.k:
                 for s in range(start1, end1 - options.k + 1):
-                    kmers1[i].add(seq[s:s+options.k])
-            if not start2 is None and end2 - start2 > options.k:        
+                    kmers1[i].add(seq[s:s + options.k])
+            if not start2 is None and end2 - start2 > options.k:
                 for s in range(start2, end2 - options.k + 1):
-                    kmers2[i].add(seq[s:s+options.k])
+                    kmers2[i].add(seq[s:s + options.k])
     return (kmers1, kmers2)
 
-def clean_kmers(options, kmers1, kmers2):
 
+def clean_kmers(options, kmers1, kmers2):
     kmer_pickle = 'all_kmers_k%i.pickle' % options.k
     print 'Making kmers unique'
     if os.path.exists(kmer_pickle):
@@ -92,13 +93,13 @@ def clean_kmers(options, kmers1, kmers2):
                         sys.stdout.write('%i/%i\n' % (s, len(seq)))
                     sys.stdout.flush()
                 try:
-                    all_kmers1[seq[s:s+options.k]] += 1
-                    all_kmers1[__reverse_complement(seq[s:s+options.k])] += 1
+                    all_kmers1[seq[s:s + options.k]] += 1
+                    all_kmers1[__reverse_complement(seq[s:s + options.k])] += 1
                 except KeyError:
                     pass
                 try:
-                    all_kmers2[seq[s:s+options.k]] += 1
-                    all_kmers2[__reverse_complement(seq[s:s+options.k])] += 1
+                    all_kmers2[seq[s:s + options.k]] += 1
+                    all_kmers2[__reverse_complement(seq[s:s + options.k])] += 1
                 except KeyError:
                     pass
         cPickle.dump((all_kmers1, all_kmers2), open(kmer_pickle, 'w'), -1)
@@ -120,18 +121,19 @@ def clean_kmers(options, kmers1, kmers2):
 
     return (kmers1, kmers2)
 
+
 def get_counts_from_multiple_fastq(fn_fastq, kmers1, kmers2, options):
     """ This is a wrapper to concatenate counts for a given list of fastq
         files"""
-    
+
     if not options.separate_files:
         return get_counts_from_single_fastq(fn_fastq, kmers1, kmers2, options)[:, sp.newaxis]
     else:
-        return sp.hstack([get_counts_from_single_fastq(fn_fastq[i], kmers1, kmers2, options)[:,sp.newaxis] for i in range(len(fn_fastq))])
+        return sp.hstack([get_counts_from_single_fastq(fn_fastq[i], kmers1, kmers2, options)[:, sp.newaxis] for i in
+                          range(len(fn_fastq))])
 
 
 def get_counts_from_single_fastq(fn_fastqs, kmers1, kmers2, options):
-
     all_kmers1 = dict([[_, 0] for s in kmers1 for _ in s])
     all_kmers2 = dict([[_, 0] for s in kmers2 for _ in s])
 
@@ -156,7 +158,8 @@ def get_counts_from_single_fastq(fn_fastqs, kmers1, kmers2, options):
             if cnt % 10000 == 0:
                 sys.stdout.write('.')
                 if cnt % 100000 == 0:
-                    sys.stdout.write(' processed %i reads - %i (%.2f%%) used for quantification\n' % (cnt, cnt1, cnt1 / float(cnt) * 100))
+                    sys.stdout.write(' processed %i reads - %i (%.2f%%) used for quantification\n' % (
+                    cnt, cnt1, cnt1 / float(cnt) * 100))
                 sys.stdout.flush()
             if use_fraction and npr.random() > options.kmer_thresh:
                 continue
@@ -164,29 +167,30 @@ def get_counts_from_single_fastq(fn_fastqs, kmers1, kmers2, options):
             slr = __reverse_complement(sl)
             for s in range(0, len(sl) - options.k + 1, options.step_k):
                 try:
-                    all_kmers1[sl[s:s+options.k]] +=1
+                    all_kmers1[sl[s:s + options.k]] += 1
                     cnt1 += 1
                     break
                 except KeyError:
                     pass
                 try:
-                    all_kmers1[slr[s:s+options.k]] +=1
+                    all_kmers1[slr[s:s + options.k]] += 1
                     cnt1 += 1
                     break
                 except KeyError:
                     pass
                 try:
-                    all_kmers2[sl[s:s+options.k]] +=1
+                    all_kmers2[sl[s:s + options.k]] += 1
                     cnt1 += 1
                     break
                 except KeyError:
                     pass
                 try:
-                    all_kmers2[slr[s:s+options.k]] +=1
+                    all_kmers2[slr[s:s + options.k]] += 1
                     cnt1 += 1
                     break
                 except KeyError:
                     pass
         fh.close()
 
-    return sp.array([[sp.sum([all_kmers1[x] for x in kmers1[y]]), sp.sum([all_kmers2[x] for x in kmers2[y]])] for y in range(len(kmers1))], dtype='float').ravel('C') 
+    return sp.array([[sp.sum([all_kmers1[x] for x in kmers1[y]]), sp.sum([all_kmers2[x] for x in kmers2[y]])] for y in
+                     range(len(kmers1))], dtype='float').ravel('C')

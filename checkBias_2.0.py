@@ -70,8 +70,6 @@ def parse_options(argv):
                        default=os.path.join(os.path.realpath(__file__).rsplit('/', 1)[:-1][0], 'data',
                                             'sampleRatios/TCGA_sample_a_ratio_uq.tsv'))
     opt_gen.add_option('-d', '--mask-filter', dest='filt', help='Mask all readcounts below this integer', default='0')
-    opt_gen.add_option('--protein-coding-filter', dest='protein_coding_filter', help='Only consider protein-coding genes', default=True)
-    opt_gen.add_option('--gene-expression-filter', dest='gene_expression_filter', help='Only consider reasonably expressed genes', default=False)
 
     opt_kmer = OptionGroup(parser, 'Options for k-mer counting')
     opt_kmer.add_option('-k', '', dest='k', type='int', help='Length of k-mer for alignmentfree counting [27]',
@@ -219,15 +217,16 @@ def main():
     logging.info("Calculate Bias")
     mycounts = calculateBias(exonTgene, data, exonpos)
 
-    ### subset to high expression
+    ### subset to high expression ### TODO: need to change this for clarity here....
     logging.info("Make sure I got only reasonably expressed genes")
-    ### assuming that i do not have rpkm and not pre-selected genes anyways
-    if (options.gene_expression_filter) & (options.fn_genes == '-') & (options.fn_exonq != '-'):
+    if (options.fn_genes == '-') & (
+            options.fn_exonq != '-'):  ### assuming that i do not have rpkm and not pre-selected genes anyways
         primeCov = sp.mean(mycounts[:, :, 0], axis=1) + sp.mean(mycounts[:, :, 1], axis=1)
 
         ### ensure average expression of 1 rpkm across samples
         iOK = (sp.mean(mycounts[:, :, 0], axis=1) > 1) & (sp.mean(mycounts[:, :, 1], axis=1) > 1)
         mycounts = mycounts[iOK, :, :]
+        myLength = myLength[iOK]
         sp.savetxt(options.fn_out + '.geneSet', exonTgene[iOK, :], fmt='%s', delimiter='\t')
 
     logging.info("Find Median")
@@ -251,6 +250,7 @@ def main():
         vals.append(ratio)
     vals = sp.array(vals)
 
+    sidx = sp.argsort(vals)
     iqr = ((sp.percentile(vals, 75) - sp.percentile(vals, 25)) * 1.5)
 
     logging.info("Tukey Filter is estimated to be %f" % (iqr + sp.percentile(vals, 75)))
