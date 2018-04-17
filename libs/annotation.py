@@ -240,8 +240,7 @@ def readinganno(fn, overlapgenes, proteinCodingFilter, format):
             gene_type = tags['gene_type']
             if key in overlapgenes:
                 continue
-            if (proteinCodingFilter) & (gene_type != "protein_coding"):
-                print "PROTEIN CODING FILTER IS ON"
+            if (proteinCodingFilter) and (gene_type != "protein_coding"):
                 continue
             value = '%s:%s:%s' % (lSpl[SEQ_NAME], ','.join(transcripts[tags['transcript_id']]), lSpl[STRAND])
         elif format in ['gff', 'gff3']:
