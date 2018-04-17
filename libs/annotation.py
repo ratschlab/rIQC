@@ -13,15 +13,13 @@ def getAnnotationTable(options):
         if os.path.exists(options.fn_anno_tmp):
             exonTgene = sp.loadtxt(options.fn_anno_tmp, delimiter='\t', dtype='string')
         else:
-            if options.fn_anno.lower().endswith('gaf'):
-                exonTgene = readAnnotationFile(options.fn_anno, format='gaf')
-            elif options.fn_anno.lower().endswith('gff') or options.fn_anno.lower().endswith('gff3'):
+            if options.fn_anno.lower().endswith('gff') or options.fn_anno.lower().endswith('gff3'):
                 exonTgene = readAnnotationFile(options.fn_anno, format='gff')
             elif options.fn_anno.lower().endswith('gtf'):
                 exonTgene = readAnnotationFile(options.fn_anno, format='gtf')
             else:
                 raise Exception(
-                    "Only annotation files in formats: gaf, gff and gtf are supported. File name must end accordingly")
+                    "Only annotation files in formats: gff and gtf are supported. File name must end accordingly")
             sp.savetxt(options.fn_anno_tmp, exonTgene, delimiter='\t', fmt='%s')
 
         ### remove non chr contigs
@@ -94,19 +92,8 @@ def getOverlapGenes(fn, format):
     Returns a list of gene names which are overlapping
     """
 
-    ### Read gene annotation from gaf
     data = []
-    if format == 'gaf':
-        for l in open(fn, 'r'):
-            lSpl = l.strip('\n').split('\t')
-            if lSpl[2] != 'gene':
-                continue
-            if lSpl[8] != 'genome':
-                continue
-            if lSpl[15] == '':
-                continue
-            data.append([lSpl[1], lSpl[16]])
-    elif format == 'gtf':
+    if format == 'gtf':
         for l in open(fn, 'r'):
             ## comments
             if l[0] == '#':
@@ -190,51 +177,39 @@ def getOverlapGenes(fn, format):
     return sp.unique(myOverlapGenes)
 
 
-def readinganno(fn, overlapgenes, format='gaf'):
+def readinganno(fn, overlapgenes, format):
     """
     Reads in all transcript annotations and removes
     overlapping genes on the fly
     """
     data = dict()
-    ### collect transcript information for certein formats
-    if format in ['gtf', 'gff', 'gff3']:
-        transcripts = dict()
-        for l in open(fn, 'r'):
-            if l[0] == '#':
-                continue
-            lSpl = l.strip('\n').split('\t')
-            if lSpl[2].lower() != 'exon':
-                continue
-            if format == 'gtf':
-                tags = get_tags_gtf(lSpl[8])
-                try:
-                    transcripts[tags['transcript_id']].append('-'.join([lSpl[3], lSpl[4]]))
-                except KeyError:
-                    transcripts[tags['transcript_id']] = ['-'.join([lSpl[3], lSpl[4]])]
-            else:
-                tags = get_tags_gff3(lSpl[8])
-                try:
-                    transcripts[tags['Parent']].append('-'.join([lSpl[3], lSpl[4]]))
-                except KeyError:
-                    transcripts[tags['Parent']] = ['-'.join([lSpl[3], lSpl[4]])]
+    ### collect transcript information
+    transcripts = dict()
+    for l in open(fn, 'r'):
+        if l[0] == '#':
+            continue
+        lSpl = l.strip('\n').split('\t')
+        if lSpl[2].lower() != 'exon':
+            continue
+        if format == 'gtf':
+            tags = get_tags_gtf(lSpl[8])
+            try:
+                transcripts[tags['transcript_id']].append('-'.join([lSpl[3], lSpl[4]]))
+            except KeyError:
+                transcripts[tags['transcript_id']] = ['-'.join([lSpl[3], lSpl[4]])]
+        else:
+            tags = get_tags_gff3(lSpl[8])
+            try:
+                transcripts[tags['Parent']].append('-'.join([lSpl[3], lSpl[4]]))
+            except KeyError:
+                transcripts[tags['Parent']] = ['-'.join([lSpl[3], lSpl[4]])]
 
     #### read transcript annotation
     for l in open(fn, 'r'):
         if l[0] == '#':
             continue
         lSpl = l.strip('\n').split('\t')
-        if format == 'gaf':
-            if lSpl[2] != 'transcript':
-                continue
-            if lSpl[8] != 'genome':
-                continue
-            if lSpl[15] == '':
-                continue
-            if lSpl[15].split('|')[0] in overlapgenes:
-                continue
-            key = lSpl[15]
-            value = lSpl[14]
-        elif format == 'gtf':
+        if format == 'gtf':
             if lSpl[2] != 'transcript':
                 continue
             tags = get_tags_gtf(lSpl[8])
@@ -323,11 +298,11 @@ def processMultiTranscriptGenes(tcrpts):
     return [firstEx, lastEx, tcrpts[0].split(':')[0], tcrpts[0].split(':')[2], str(sp.median(myExStrucL))]
 
 
-def readAnnotationFile(fn, format='gaf'):
+def readAnnotationFile(fn, format):
     ### get list of overlapping genes
     overlapgenes = getOverlapGenes(fn, format)
 
-    ### reading in gaf
+    ### reading in
     data = readinganno(fn, overlapgenes, format)
 
     uqgid = data.keys()  ###  unique gene ids
