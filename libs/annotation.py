@@ -1,10 +1,9 @@
 import pysam
 import pdb
-import time
-
 import scipy as sp
 import scipy.stats as spst
 import numpy as np
+import time
 import usefulTools as ut
 import os
 
@@ -12,49 +11,17 @@ import os
 ### SOME NUMBERS
 NMB_CHR = 23
 
-### INDICES FOR GTF
-GTF_SEQ_NAME = 0 # name of chromosome or scaffold
-GTF_SOURCE = 1 # name of program that generated this feature
-GTF_FEATURE = 2 # feature type name (e.g. "gene", "transcript", "exon")
-GTF_START = 3 # start position of feature (seq numbering starting at 1)
-GTF_END = 4 # end position of feature (seq numbering starting at 1)
-GTF_SCORE = 5 # a floating point value
-GTF_STRAND = 6 # + (forward) or - (reverse)
-GTF_FRAME = 7 # 0/1/2 : position in codon
-GTF_ATTRIBUTE = 8 # semicolon-separated list of tag-value pairs
-
-### INDICES FOR GFF
-GFF_SEQ_ID = 0 # name of chromosome or scaffold
-GFF_SOURCE = 1 # name of program that generated this feature
-GFF_TYPE = 2 # type of feature (term or accession from SOFA sequence ontology)
-GFF_START = 3 # start position of feature (seq numbering starting at 1)
-GFF_END = 4 # end position of feature (seq numbering starting at 1)
-GFF_SCORE = 5 # a floating point value
-GFF_STRAND = 6 # + (forward) or - (reverse)
-GFF_PHASE = 7 # 0/1/2 : position in codon
-GFF_ATTRIBUTE = 8 # semicolon-separated list of tag-value pairs
-
-### INDICES FOR GAF
-GAF_DB = 0 # database from which identifier in "DB_OBJECT_ID" is drawn
-GAF_DB_OBJECT_ID = 1 # unique identifier from database in "DB"
-GAF_DB_OBJECT_SYMBOL = 2 # (unique and valid) symbol to which "DB_OBJECT_ID" is matched
-GAF_QUALIFIER = 3 # flags that modify interpretation of an annotation
-GAF_GO_ID = 4 # GO identifier for term attributed to "DB_OBJECT_ID"
-GAF_DB_REFERENCE = 5 # one or more unique identifiers for a single source cited as an authority
-    # for the attribution of the "GO_ID" to the "DB_OBJECT_ID"
-GAF_EVIDENCE_CODE = 6 # see GO evidence code guide for list of valid evidence codes
-GAF_WITH_FROM = 7 # one of DB:gene_symbol ; DB:gene_symbol[allele_symbol] ; DB:gene_id ;
-    # DB:protein_name ; DB:sequence_id ; GO:GO_id ; CHEBI:CHEBI_id
-GAF_ASPECT = 8 # refers to namespace or ontology to which "GO_ID" belongs
-GAF_DB_OBJECT_NAME = 9 # name of gene or gene product
-GAF_DB_OBJECT_SYNONYM = 10 # gene symbol [or other text]
-GAF_DB_OBJECT_TYPE = 11 # description of the type of gene product being annotated
-GAF_TAXON = 12 # taxonomic identifier(s)
-GAF_DATE = 13 # date on which annotation was made
-GAF_ASSIGNED_BY = 14 # database which made the annotation
-GAF_ANNOTATION_EXTENSION = 15 # one of DB:gene_id ; DB:sequence_id ; CHEBI:CHEBI_id ;
-    # Cell Type Ontology:CL_id ; GO:GO_id
-GAF_GENE_PRODUCT_FORM_ID = 16 # allows the annotation of specific variants of that gene or gene product
+### INDICES FOR GTF/GFF
+SEQ_NAME = 0    # name of chromosome or scaffold
+SOURCE = 1      # name of program that generated this feature
+FEATURE = 2     # feature type name (e.g. "gene", "transcript", "exon")
+                # type of feature (term or accession from SOFA sequence ontology)
+START = 3       # start position of feature (seq numbering starting at 1)
+END = 4         # end position of feature (seq numbering starting at 1)
+SCORE = 5       # a floating point value
+STRAND = 6      # + (forward) or - (reverse)
+FRAME = 7       # 0/1/2 : position in codon
+ATTRIBUTE = 8   # semicolon-separated list of tag-value pairs
 
 
 
@@ -87,23 +54,20 @@ def filter_genes(exonTgene, options):
 
 
 def getAnnotationTable(options):
-    print "DEBUG : annotation.py : getAnnotationTable()"
-
     if options.fn_genes == '-':
         if os.path.exists(options.fn_anno_tmp):
             exonTgene = sp.loadtxt(options.fn_anno_tmp, delimiter = '\t', dtype = 'string') 
         else:
-            if options.fn_anno.lower().endswith('gaf'):
-                exonTgene = readAnnotationFile(options.fn_anno, format='gaf')
-            elif options.fn_anno.lower().endswith('gff') or options.fn_anno.lower().endswith('gff3'):
-                exonTgene = readAnnotationFile(options.fn_anno, format='gff')
+            if options.fn_anno.lower().endswith('gff') or options.fn_anno.lower().endswith('gff3'):
+                exonTgene = readAnnotationFile(options.fn_anno, options.protein_coding_filter, format='gff')
             elif options.fn_anno.lower().endswith('gtf'):
-                exonTgene = readAnnotationFile(options.fn_anno, format='gtf')
+                exonTgene = readAnnotationFile(options.fn_anno, options.protein_coding_filter, format='gtf')
             else:
-                raise Exception("Only annotation files in formats: gaf, gff and gtf are supported. File name must end accordingly")
+                raise Exception("Only annotation files in formats: gff and gtf are supported. File name must end accordingly")
             sp.savetxt(options.fn_anno_tmp, exonTgene, delimiter = '\t', fmt = '%s')
 
-        remove_non_chr_contigs(exonTgene)
+        exonTgene = remove_non_chr_contigs(exonTgene)
+        exonTgene = filter_genes(exonTgene, options)
 
     else:
         exonTgene = sp.loadtxt(options.fn_genes, delimiter = ' ', dtype = 'string')
@@ -111,27 +75,24 @@ def getAnnotationTable(options):
 
 
 def getTranscriptLength(rec,iFirst, iLast):
-    print "DEBUG : annotation.py : getTranscriptLength()"
     expieces = sp.array(rec.split(':')[1].split(','))
-    iEnd     = expieces.shape[0] - iLast
     lgt      = 0
 
-    for i,x in enumerate(expieces[iFirst:]):
+    for i, x in enumerate(expieces[iFirst:]):
         start, end = x.split('-')
         if i == 0:
-            lgt += ( int(end) - int(start) + 1) / 2.
+            lgt += (int(end) - int(start) + 1) / 2.
         elif i == iLast - 1:
-            lgt += ( int(end) - int(start) + 1) / 2.
+            lgt += (int(end) - int(start) + 1) / 2.
         else:
             lgt += int(end) - int(start) + 1
     return lgt
 
 def getTranscriptLengthBex(rec, firstEx, lastEx):
     """
-    Returns transcript length defined as 0.5 first exon
+    Returns transcript legnth defined as 0.5 first exon
     everything in between and 0.5 last exon
     """
-    print "DEBUG : annotation.py : getTranscriptLengthBex()"
     expieces = sp.array(rec.split(':')[1].split(','))
     foundFirst = False
     lgt = 0
@@ -139,15 +100,15 @@ def getTranscriptLengthBex(rec, firstEx, lastEx):
         start, end = x.split('-')
         if x == firstEx:
             foundFirst = True
-            lgt += 0.5 * ( int(end) - int(start) + 1)
+            lgt += 0.5 * (int(end) - int(start) + 1)
             continue
         if x == lastEx:
             foundFirst = False
-            lgt += 0.5 * ( int(end) - int(start) + 1)
+            lgt += 0.5 * (int(end) - int(start) + 1)
             break
         if foundFirst:
             lgt += int(end) - int(start) + 1
-    assert lgt != 0, "Outch, there are transcripts with no length"
+    assert lgt != 0, "Warning: there are transcripts with no length"
     return lgt
 
 
@@ -156,69 +117,59 @@ def getTranscriptLengthBex(rec, firstEx, lastEx):
 
 
 
-def readinganno(fn, overlapgenes, format='gaf'):
+def readinganno(fn, overlapgenes, proteinCodingFilter, format):
     """
     Reads in all transcript annotations
     and removes overlapping genes on the fly
     and keeps only protein-coding genes
     """
-    print "DEBUG : annotation.py : readinganno()"
 
     data = dict()
-    ### collect transcript information for certain formats
-    if format in ['gtf', 'gff', 'gff3']:
-        transcripts = dict()
-        for l in open(fn, 'r'):
-            if l[0] == '#':
-                continue
-            lSpl = l.strip('\n').split('\t')
-            if lSpl[GTF_FEATURE].lower() != 'exon':
-                continue
-            if format == 'gtf':
-                tags = get_tag_value_pairs_gtf(lSpl[GTF_ATTRIBUTE])
-                try:
-                    transcripts[tags['transcript_id']].append('-'.join([lSpl[GTF_START], lSpl[GTF_END]]))
-                except KeyError:
-                    transcripts[tags['transcript_id']] = ['-'.join([lSpl[GTF_START], lSpl[GTF_END]])]
-            else:
-                tags = get_tag_value_pairs_gff3(lSpl[GFF_ATTRIBUTE])
-                try:
-                    transcripts[tags['Parent']].append('-'.join([lSpl[GFF_START], lSpl[GFF_END]]))
-                except KeyError:
-                    transcripts[tags['Parent']] = ['-'.join([lSpl[GFF_START], lSpl[GFF_END]])]
+    ### collect transcript information
+
+    transcripts = dict()
+    for l in open(fn, 'r'):
+        if l[0] == '#':
+            continue
+        lSpl = l.strip('\n').split('\t')
+        if lSpl[FEATURE].lower() != 'exon':
+            continue
+        if format == 'gtf':
+            tags = get_tag_value_pairs_gtf(lSpl[ATTRIBUTE])
+            try:
+                transcripts[tags['transcript_id']].append('-'.join([lSpl[START], lSpl[END]]))
+            except KeyError:
+                transcripts[tags['transcript_id']] = ['-'.join([lSpl[START], lSpl[END]])]
+        else:
+            tags = get_tag_value_pairs_gff3(lSpl[ATTRIBUTE])
+            try:
+                transcripts[tags['Parent']].append('-'.join([lSpl[START], lSpl[END]]))
+            except KeyError:
+                transcripts[tags['Parent']] = ['-'.join([lSpl[START], lSpl[END]])]
         
     #### read transcript annotation
     for l in open(fn, 'r'):
         if l[0] == '#':
             continue
         lSpl = l.strip('\n').split('\t')
-        if format == 'gaf':
-            if lSpl[GAF_DB_OBJECT_SYMBOL] != 'transcript':
+
+        if format == 'gtf':
+            if lSpl[FEATURE] != 'transcript':
                 continue
-            if lSpl[GAF_ASPECT] != 'genome':
-                continue
-            if lSpl[GAF_ANNOTATION_EXTENSION] == '':
-                continue
-            if lSpl[GAF_ANNOTATION_EXTENSION].split('|')[0] in overlapgenes:
-                continue
-            key = lSpl[GAF_ANNOTATION_EXTENSION]
-            value = lSpl[GAF_ASSIGNED_BY]
-        elif format == 'gtf':
-            if lSpl[GTF_FEATURE] != 'transcript':
-                continue
-            tags = get_tag_value_pairs_gtf(lSpl[GTF_ATTRIBUTE])
+            tags = get_tag_value_pairs_gtf(lSpl[ATTRIBUTE])
             key = tags['gene_id']
             type = tags['gene_type']
             if key in overlapgenes:
                 continue
-            if type != "protein_coding":
+            if proteinCodingFilter & type != "protein_coding":
                 continue
-            value = '%s:%s:%s' % (lSpl[GTF_SEQ_NAME],
-                                  ','.join(transcripts[tags['transcript_id']]), lSpl[GTF_STRAND])
+            value = '%s:%s:%s' % (lSpl[SEQ_NAME],
+                                  ','.join(transcripts[tags['transcript_id']]), lSpl[STRAND])
         elif format in ['gff', 'gff3']:
+            # TODO: Include protein_coding_genes filter
             if not lSpl[2].lower() in ['transcript', 'pseudogenic_transcript', 'snrna', 'snorna', 'rrna', 'pseudogene', 'processed_transcript', 'processed_pseudogene', 'lincrna', 'mirna']:
                 continue
-            tags = get_tag_value_pairs_gff3(lSpl[GFF_ATTRIBUTE])
+            tags = get_tag_value_pairs_gff3(lSpl[ATTRIBUTE])
             try:
                 key = tags['Parent']
             except KeyError:
@@ -229,7 +180,7 @@ def readinganno(fn, overlapgenes, format='gaf'):
             if key in overlapgenes:
                 continue
             try:
-                value = '%s:%s:%s' % (lSpl[GFF_SEQ_ID], ','.join(transcripts[tags['ID']]), lSpl[GFF_STRAND])
+                value = '%s:%s:%s' % (lSpl[SEQ_NAME], ','.join(transcripts[tags['ID']]), lSpl[STRAND])
             except KeyError:
                 continue
         try:
@@ -240,7 +191,6 @@ def readinganno(fn, overlapgenes, format='gaf'):
 
 
 def processSingleTranscriptGenes(tcrpt):
-    print "DEBUG : annotation.py : processSingleTranscriptGenes()"
 
     assert len(tcrpt) == 1, "Too many transcripts to process"
 
@@ -300,49 +250,37 @@ def processMultiTranscriptGenes(tcrpts):
 
 def getOverlapGenes(fn, format):
     """
-    Returns a list of gene names which are overlapping TODO:What does overlapping mean exactly?
+    Returns a list of gene names which are overlapping
     """
-
-    print "DEBUG : annotation.py : getOverlapGenes()"
     ### Read gene annotation
     data = []
-    if format == 'gaf':
-        for l in open(fn, 'r'):
-            lSpl = l.strip('\n').split('\t')
-            if lSpl[GAF_DB_OBJECT_SYMBOL] != 'gene':
-                continue
-            if lSpl[GAF_ASPECT] != 'genome':
-                continue
-            if lSpl[GAF_ANNOTATION_EXTENSION] == '':
-                continue
-            data.append([lSpl[GAF_DB_OBJECT_ID], lSpl[GAF_GENE_PRODUCT_FORM_ID]])
-    elif format == 'gtf':
+    if format == 'gtf':
         for l in open(fn, 'r'):
             ## comments
             if l[0] == '#':
                 continue
             lSpl = l.strip('\n').split('\t')
-            if lSpl[GTF_FEATURE].lower() != 'gene':
+            if lSpl[FEATURE].lower() != 'gene':
                 continue
-            tags = get_tag_value_pairs_gtf(lSpl[GTF_ATTRIBUTE])
+            tags = get_tag_value_pairs_gtf(lSpl[ATTRIBUTE])
             data.append([tags['gene_id'], '%s:%s-%s' %
-                         (lSpl[GTF_SEQ_NAME], lSpl[GTF_START], lSpl[GTF_END])])  # 0:seqname, 3:startpos, 4:endpos
+                         (lSpl[SEQ_NAME], lSpl[START], lSpl[END])])  # 0:seqname, 3:startpos, 4:endpos
     elif format in ['gff', 'gff3']:
         for l in open(fn, 'r'):
             ## comments
             if l[0] == '#':
                 continue
             lSpl = l.strip('\n').split('\t')
-            if not lSpl[GFF_TYPE].lower() in ['gene', 'lincrna_gene', 'mirna_gene', 'processed_transcript', 'rrna_gene',
+            if not lSpl[FEATURE].lower() in ['gene', 'lincrna_gene', 'mirna_gene', 'processed_transcript', 'rrna_gene',
                                        'snrna_gene', 'snorna_gene']:
                 continue
-            tags = get_tag_value_pairs_gff3(lSpl[GFF_ATTRIBUTE])
+            tags = get_tag_value_pairs_gff3(lSpl[ATTRIBUTE])
             try:
                 data.append([tags['ID'], '%s:%s-%s' %
-                             (lSpl[GFF_SEQ_ID], lSpl[GFF_START], lSpl[GFF_END])])
+                             (lSpl[SEQ_NAME], lSpl[START], lSpl[END])])
             except KeyError:
                 data.append([tags['Parent'], '%s:%s-%s' %
-                             (lSpl[GFF_SEQ_ID], lSpl[GFF_START], lSpl[GFF_END])])
+                             (lSpl[SEQ_NAME], lSpl[START], lSpl[END])])
 
     # data contains two columns: gene_ID, gene_locus (e.g. chr7:140020290-130027948)
     data = sp.array(data)
@@ -403,13 +341,12 @@ def getOverlapGenes(fn, format):
             myOverlapGenes.extend(overlapgenesEnd.tolist())
     return sp.unique(myOverlapGenes)
 
-def readAnnotationFile(fn, format='gaf'):
-    print "DEBUG : annotation.py : readAnnotationFile()"
+def readAnnotationFile(fn, proteinCodingFilter, format):
 
     overlapgenes = getOverlapGenes(fn, format)
 
     ### reading in
-    data   = readinganno(fn, overlapgenes, format)
+    data   = readinganno(fn, overlapgenes, proteinCodingFilter, format)
 
     uqgid   = data.keys() ###  unique gene ids
     newdata = []
