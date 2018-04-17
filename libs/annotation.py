@@ -51,9 +51,9 @@ def getAnnotationTable(options):
             exonTgene = sp.loadtxt(options.fn_anno_tmp, delimiter='\t', dtype='string')
         else:
             if options.fn_anno.lower().endswith('gff') or options.fn_anno.lower().endswith('gff3'):
-                exonTgene = readAnnotationFile(options.fn_anno, format='gff')
+                exonTgene = readAnnotationFile(options.fn_anno, options.protein_coding_filter, format='gff')
             elif options.fn_anno.lower().endswith('gtf'):
-                exonTgene = readAnnotationFile(options.fn_anno, format='gtf')
+                exonTgene = readAnnotationFile(options.fn_anno, options.protein_coding_filter, format='gtf')
             else:
                 raise Exception(
                     "Only annotation files in formats: gff and gtf are supported. File name must end accordingly")
@@ -200,7 +200,7 @@ def getOverlapGenes(fn, format):
     return sp.unique(myOverlapGenes)
 
 
-def readinganno(fn, overlapgenes, format):
+def readinganno(fn, overlapgenes, proteinCodingFilter, format):
     """
     Reads in all transcript annotations and removes
     overlapping genes on the fly
@@ -237,7 +237,11 @@ def readinganno(fn, overlapgenes, format):
                 continue
             tags = get_tags_gtf(lSpl[ATTRIBUTE])
             key = tags['gene_id']
+            gene_type = tags['gene_type']
             if key in overlapgenes:
+                continue
+            if (proteinCodingFilter) & (gene_type != "protein_coding"):
+                print "PROTEIN CODING FILTER IS ON"
                 continue
             value = '%s:%s:%s' % (lSpl[SEQ_NAME], ','.join(transcripts[tags['transcript_id']]), lSpl[STRAND])
         elif format in ['gff', 'gff3']:
@@ -321,12 +325,12 @@ def processMultiTranscriptGenes(tcrpts):
     return [firstEx, lastEx, tcrpts[0].split(':')[0], tcrpts[0].split(':')[2], str(sp.median(myExStrucL))]
 
 
-def readAnnotationFile(fn, format):
+def readAnnotationFile(fn, proteinCodingFilter, format):
     ### get list of overlapping genes
     overlapgenes = getOverlapGenes(fn, format)
 
     ### reading in
-    data = readinganno(fn, overlapgenes, format)
+    data = readinganno(fn, overlapgenes, proteinCodingFilter, format)
 
     uqgid = data.keys()  ###  unique gene ids
     newdata = []
