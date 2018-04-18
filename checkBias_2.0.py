@@ -70,7 +70,7 @@ def parse_options(argv):
                        default=os.path.join(os.path.realpath(__file__).rsplit('/', 1)[:-1][0], 'data',
                                             'sampleRatios/TCGA_sample_a_ratio_uq.tsv'))
     opt_gen.add_option('-d', '--mask-filter', dest='filt', help='Mask all readcounts below this integer', default='0')
-    opt_gen.add_option('', '--protein-coding-filter', dest="protein_coding_filter", help="Consider only genes that are protein-coding", default=True)
+    opt_gen.add_option('', '--protein-coding-filter_OFF', dest="protein_coding_filter", action="store_false", help="Consider only genes that are protein-coding", default=True)
 
     opt_kmer = OptionGroup(parser, 'Options for k-mer counting')
     opt_kmer.add_option('-k', '', dest='k', type='int', help='Length of k-mer for alignmentfree counting [27]',
@@ -142,6 +142,7 @@ def main():
         consoleHandler = logging.StreamHandler()
         log.addHandler(consoleHandler)
     ### Read annotation from file
+    print options.protein_coding_filter
     logging.info("Reading Annotation from file")
     exonTgene = getAnnotationTable(options)
 

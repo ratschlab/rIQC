@@ -50,6 +50,7 @@ def getAnnotationTable(options):
         if os.path.exists(options.fn_anno_tmp):
             exonTgene = sp.loadtxt(options.fn_anno_tmp, delimiter='\t', dtype='string')
         else:
+	    print options.protein_coding_filter
             if options.fn_anno.lower().endswith('gff') or options.fn_anno.lower().endswith('gff3'):
                 exonTgene = readAnnotationFile(options.fn_anno, options.protein_coding_filter, format='gff')
             elif options.fn_anno.lower().endswith('gtf'):
@@ -228,6 +229,8 @@ def readinganno(fn, overlapgenes, proteinCodingFilter, format):
                 transcripts[tags['Parent']] = ['-'.join([lSpl[START], lSpl[END]])]
 
     #### read transcript annotation
+    print_flag = True
+    print proteinCodingFilter
     for l in open(fn, 'r'):
         if l[SEQ_NAME] == '#':
             continue
@@ -241,11 +244,10 @@ def readinganno(fn, overlapgenes, proteinCodingFilter, format):
             if key in overlapgenes:
                 continue
 
-            flag = True
             if (proteinCodingFilter) and (gene_type != "protein_coding"):
-                if(flag):
+                if(print_flag):
                     print "INFO: PROTEIN CODING FILTER IS ON"
-                    flag = False
+                    print_flag = False
                 continue
             value = '%s:%s:%s' % (lSpl[SEQ_NAME], ','.join(transcripts[tags['transcript_id']]), lSpl[STRAND])
         elif format in ['gff', 'gff3']:
@@ -334,6 +336,7 @@ def readAnnotationFile(fn, proteinCodingFilter, format):
     overlapgenes = getOverlapGenes(fn, format)
 
     ### reading in
+    print proteinCodingFilter
     data = readinganno(fn, overlapgenes, proteinCodingFilter, format)
 
     uqgid = data.keys()  ###  unique gene ids
