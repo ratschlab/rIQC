@@ -142,7 +142,6 @@ def main():
         consoleHandler = logging.StreamHandler()
         log.addHandler(consoleHandler)
     ### Read annotation from file
-    print options.protein_coding_filter
     logging.info("Reading Annotation from file")
     exonTgene = getAnnotationTable(options)
 
@@ -171,7 +170,7 @@ def main():
     elif options.fastq_dir != '-':
         kmers1, kmers2 = prepare_kmers(options, exonTgene)
         kmers1, kmers2 = clean_kmers(options, kmers1, kmers2)
-        fastq_list = glob.glob(os.path.join(options.fastq_dir))
+        fastq_list = glob.glob(os.path.join(options.fastq_dir, '*.fastq')) + glob.glob(os.path.join(options.fastq_dir, '*.fastq.gz'))
         if options.separate_files:
             header = fastq_list
         else:
