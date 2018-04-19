@@ -20,7 +20,10 @@ def get_counts_from_single_bam_sparse(fn_bam, regions):
         dummy[:] = sp.nan
         return dummy
         
-    IN = h5py.File(fn_bam, 'r')
+    if fn_bam.lower().endswith('npz'):
+        IN = sp.load(fn_bam)
+    else:
+        IN = h5py.File(fn_bam, 'r')
     refseqs = sp.unique([x.split('_')[0] for x in IN.keys()])
     cnts = sp.zeros((regions.shape[0], 2), dtype='float')
     t0 = time.time()
@@ -69,6 +72,7 @@ def get_counts_from_single_bam_sparse(fn_bam, regions):
         finally:
             #cnts.append([cnt1, cnt2])
             cnts[ii, :] = [cnt1, cnt2]
+    IN.close()
 
     return cnts.ravel('C')
     #return sp.array(cnts, dtype='float').ravel('C')
