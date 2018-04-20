@@ -25,8 +25,6 @@ def parse_options(argv):
     parser = OptionParser()
 
     sampleinput = OptionGroup(parser, 'Input')
-    sampleinput.add_option('-f', '--file', dest='fn_exonq', metavar='FILE',
-                           help='Exon quantification file from firehose', default='-')
     sampleinput.add_option('-b', '--bam_dir', dest='dir_bam', metavar='FILE', help='Directory of bam files',
                            default='-')
     sampleinput.add_option('-t', '--tab_cnt', dest='dir_cnt', metavar='FILE',
@@ -89,7 +87,7 @@ def parse_options(argv):
     if len(argv) < 2:
         parser.print_help()
         sys.exit(2)
-    if sp.sum(int(options.fn_exonq != '-') + int(options.dir_bam != '-') + int(options.dir_cnt != '-') + int(
+    if sp.sum(int(options.dir_bam != '-') + int(options.dir_cnt != '-') + int(
             options.fn_bam != '-') + int(options.fastq_dir != '-')) != 1:
         print "Please specify exactly one type of input file(s) (e.g.: Exon quantification, Bam Files or Tab delimited count files)"
         parser.print_help()
@@ -145,20 +143,7 @@ def main():
     logging.info("Reading Annotation from file")
     exonTgene = getAnnotationTable(options)
 
-    ### Read in or generate quantifications
-    logging.info("Reading in quantifications")
-    if options.fn_exonq != '-':  ### TODO: change this into raw by principle and then generate rpkm which match firebrowse
-        exonpos, header, data = readExpData(options.fn_exonq, options.qmode)
-
-        iOK = ~sp.array([x.startswith('chrM') for x in exonpos])
-        exonpos = exonpos[iOK]
-        data = data[iOK, :]
-        sidx = sp.argsort(exonpos)
-        exonpos = exonpos[sidx]
-        data = data[sidx, :]
-
-
-    elif options.dir_cnt != '-':
+    if options.dir_cnt != '-':
         exonpos, header, data = readExpDataBam(options.dir_cnt)  ### move this over to file lists rather than dirs
         data[data < filt] = sp.nan
         if options.qmode == 'rpkm':
@@ -170,7 +155,10 @@ def main():
     elif options.fastq_dir != '-':
         kmers1, kmers2 = prepare_kmers(options, exonTgene)
         kmers1, kmers2 = clean_kmers(options, kmers1, kmers2)
-        fastq_list = glob.glob(os.path.join(options.fastq_dir, '*.fastq')) + glob.glob(os.path.join(options.fastq_dir, '*.fastq.gz'))
+        fastq_list = glob.glob(os.path.join(options.fastq_dir, '*.fastq')) \
+                     + glob.glob(os.path.join(options.fastq_dir, '*.fastq.gz')) \
+                     + glob.glob(os.path.join(options.fastq_dir, '*.fq')) \
+                     + glob.glob(os.path.join(options.fastq_dir, '*.fq.gz'))
         if options.separate_files:
             header = fastq_list
         else:
@@ -204,7 +192,7 @@ def main():
 
     ### normalize counts by exon length
     logging.info("Normalize counts by exon length")
-    if (options.fn_exonq == '-') | (options.qmode == 'raw'):
+    if (options.qmode == 'raw'):
         exonl = sp.array([int(x.split(':')[1].split('-')[1]) - int(x.split(':')[1].split('-')[0]) + 1 for x in exonpos],
                          dtype='float') / 1000.
         data /= sp.tile(exonl[:, sp.newaxis], data.shape[1])
@@ -217,17 +205,6 @@ def main():
     ### Calculate 3'/5' Bias
     logging.info("Calculate Bias")
     mycounts = calculateBias(exonTgene, data, exonpos)
-
-    ### subset to high expression ### TODO: need to change this for clarity here....
-    logging.info("Make sure I got only reasonably expressed genes")
-    if (options.fn_genes == '-') & (
-            options.fn_exonq != '-'):  ### assuming that i do not have rpkm and not pre-selected genes anyways
-        primeCov = sp.mean(mycounts[:, :, 0], axis=1) + sp.mean(mycounts[:, :, 1], axis=1)
-
-        ### ensure average expression of 1 rpkm across samples
-        iOK = (sp.mean(mycounts[:, :, 0], axis=1) > 1) & (sp.mean(mycounts[:, :, 1], axis=1) > 1)
-        mycounts = mycounts[iOK, :, :]
-        sp.savetxt(options.fn_out + '.geneSet', exonTgene[iOK, :], fmt='%s', delimiter='\t')
 
     logging.info("Find Median")
     vals = []
