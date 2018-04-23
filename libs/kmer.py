@@ -29,7 +29,7 @@ def __read_genome(fname):
             seq = []
             curr_chrm = line.strip().split(' ')[0][1:]
         else:
-            seq.append(line.strip())
+            seq.append(line.strip().upper())
     if curr_chrm != '':
         yield (curr_chrm, ''.join(seq))
     fh.close()
