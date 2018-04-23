@@ -117,7 +117,8 @@ def clean_kmers(options, kmers1, kmers2):
         total += size_old
         kmers2[i] = filter(lambda x: all_kmers2[x] == 1 and not x in all_kmers1, rec)
         removed += (size_old - len(kmers2[i]))
-    print 'Removed %i non-unique kmers (%.2f percent)' % (removed, removed / float(total) * 100)
+    if(float(total) != 0):
+        print 'Removed %i non-unique kmers (%.2f percent)' % (removed, removed / float(total) * 100)
 
     return (kmers1, kmers2)
 
