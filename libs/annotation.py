@@ -202,8 +202,8 @@ def getOverlapGenes(fn, format):
 
 def readinganno(fn, overlapgenes, proteinCodingFilter, format):
     """
-    Reads in all transcript annotations and removes
-    overlapping genes on the fly
+    Reads in all transcript annotations,
+    removes overlapping genes and eventually filters for protein-coding genes on the fly
     """
     data = dict()
     ### collect transcript information
@@ -211,7 +211,9 @@ def readinganno(fn, overlapgenes, proteinCodingFilter, format):
     for l in open(fn, 'r'):
         if l[SEQ_NAME] == '#':
             continue
+
         lSpl = l.strip('\n').split('\t')
+
         if lSpl[FEATURE].lower() != 'exon':
             continue
         if format == 'gtf':
@@ -220,7 +222,7 @@ def readinganno(fn, overlapgenes, proteinCodingFilter, format):
                 transcripts[tags['transcript_id']].append('-'.join([lSpl[START], lSpl[END]]))
             except KeyError:
                 transcripts[tags['transcript_id']] = ['-'.join([lSpl[START], lSpl[END]])]
-        else:
+        elif format == 'gff':
             tags = get_tags_gff3(lSpl[ATTRIBUTE])
             try:
                 transcripts[tags['Parent']].append('-'.join([lSpl[START], lSpl[END]]))
@@ -228,48 +230,55 @@ def readinganno(fn, overlapgenes, proteinCodingFilter, format):
                 transcripts[tags['Parent']] = ['-'.join([lSpl[START], lSpl[END]])]
 
     #### read transcript annotation
-    print_flag = True
     for l in open(fn, 'r'):
         if l[SEQ_NAME] == '#':
             continue
         lSpl = l.strip('\n').split('\t')
+
         if format == 'gtf':
-            if lSpl[FEATURE] != 'transcript':
+            if lSpl[FEATURE].lower() != 'transcript':
                 continue
             tags = get_tags_gtf(lSpl[ATTRIBUTE])
+
             key = tags['gene_id']
             gene_type = tags['gene_type']
             if key in overlapgenes:
                 continue
 
             if (proteinCodingFilter) and (gene_type != "protein_coding"):
-                if(print_flag):
-                    print "INFO: PROTEIN CODING FILTER IS ON"
-                    print_flag = False
                 continue
             value = '%s:%s:%s' % (lSpl[SEQ_NAME], ','.join(transcripts[tags['transcript_id']]), lSpl[STRAND])
-        elif format in ['gff', 'gff3']:
+        elif format == 'gff':
             if not lSpl[FEATURE].lower() in ['transcript', 'pseudogenic_transcript', 'snrna', 'snorna', 'rrna', 'pseudogene',
                                        'processed_transcript', 'processed_pseudogene', 'lincrna', 'mirna']:
                 continue
             tags = get_tags_gff3(lSpl[ATTRIBUTE])
+
+            gene_type = tags['gene_type']
+
+            key_flag = True
             try:
                 key = tags['Parent']
             except KeyError:
                 try:
                     key = tags['geneID']
                 except KeyError:
-                    continue
-            if key in overlapgenes:
+                    key_flag = False
+
+            if key_flag and key in overlapgenes:
+                continue
+            if (proteinCodingFilter) and (gene_type != "protein_coding"):
                 continue
             try:
                 value = '%s:%s:%s' % (lSpl[SEQ_NAME], ','.join(transcripts[tags['ID']]), lSpl[STRAND])
             except KeyError:
                 continue
+
         try:
             data[key].append(value)
         except KeyError:
             data[key] = [value]
+
     return data
 
 
@@ -360,7 +369,7 @@ def readAnnotationFile(fn, proteinCodingFilter, format):
 
 
 def get_tags_gff3(tagline):
-    """Extract tags from given tagline"""
+    """Extract tags from given tagline in a gff or gff3 file"""
 
     tags = dict()
     for t in tagline.strip(';').split(';'):
@@ -370,7 +379,7 @@ def get_tags_gff3(tagline):
 
 
 def get_tags_gtf(tagline):
-    """Extract tags from given tagline"""
+    """Extract tags from given tagline in a gtf file"""
 
     tags = dict()
     for t in tagline.strip(';').split(';'):

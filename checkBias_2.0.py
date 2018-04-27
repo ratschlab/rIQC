@@ -10,7 +10,6 @@ import fnmatch
 from optparse import OptionParser, OptionGroup
 
 from libs.annotation import *
-from libs.counts import *
 from libs.viz import *
 from libs.bam import *
 from libs.bam_sparse import *
@@ -27,8 +26,6 @@ def parse_options(argv):
     sampleinput = OptionGroup(parser, 'Input')
     sampleinput.add_option('-b', '--bam_dir', dest='dir_bam', metavar='FILE', help='Directory of bam files',
                            default='-')
-    sampleinput.add_option('-t', '--tab_cnt', dest='dir_cnt', metavar='FILE',
-                           help='Directory of tab delimited count files', default='-')
     sampleinput.add_option('-F', '--fastq_dir', dest='fastq_dir', metavar='FILE', help='Directory of fastq files',
                            default='-')
     sampleinput.add_option('-a', '--fn_anno', dest='fn_anno', metavar='FILE', help='Annotation', default='-')
@@ -87,7 +84,7 @@ def parse_options(argv):
     if len(argv) < 2:
         parser.print_help()
         sys.exit(2)
-    if sp.sum(int(options.dir_bam != '-') + int(options.dir_cnt != '-') + int(
+    if sp.sum(int(options.dir_bam != '-') + int(
             options.fn_bam != '-') + int(options.fastq_dir != '-')) != 1:
         print "Please specify exactly one type of input file(s) (e.g.: Exon quantification, Bam Files or Tab delimited count files)"
         parser.print_help()
@@ -143,16 +140,7 @@ def main():
     logging.info("Reading Annotation from file")
     exonTgene = getAnnotationTable(options)
 
-    if options.dir_cnt != '-':
-        exonpos, header, data = readExpDataBam(options.dir_cnt)  ### move this over to file lists rather than dirs
-        data[data < filt] = sp.nan
-        if options.qmode == 'rpkm':
-            data = (data * 1E9) / sp.sum(data, axis=0)
-            exonl = sp.array(
-                [int(x.split(':')[1].split('-')[1]) - int(x.split(':')[1].split('-')[0]) + 1 for x in exonpos])
-            data /= sp.tile(exonl[:, sp.newaxis], data.shape[1])
-
-    elif options.fastq_dir != '-':
+    if options.fastq_dir != '-':
         kmers1, kmers2 = prepare_kmers(options, exonTgene)
         kmers1, kmers2 = clean_kmers(options, kmers1, kmers2)
         fastq_list = glob.glob(os.path.join(options.fastq_dir, '*.fastq')) \
