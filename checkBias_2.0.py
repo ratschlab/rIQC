@@ -35,8 +35,6 @@ def parse_options(argv):
 
     sampleinput.add_option('-a', '--fn_anno', dest='fn_anno', metavar='FILE', help='Annotation', default='-')
 
-    sampleinput.add_option('-w', '--whitelist', dest='fn_white', metavar='FILE', help='White list with ids',
-                           default='-')
     sampleinput.add_option('-G', '--genome', dest='fn_genome', metavar='FILE', help='Path to genome file in fasta',
                            default='-')
     sampleinput.add_option('-i', '--genelist', dest='fn_genes', metavar='FILE', help='file with genenames to use',
@@ -107,16 +105,6 @@ def parse_options(argv):
         print >> sys.stderr, 'For usage on fastq files a genome file in fasta needs to be provided via -G/--genome'
         sys.exit(2)
     return options
-
-
-def whitelisting(options, header, data):
-    whitelist = sp.loadtxt(options.fn_white, delimiter='\t', dtype='string')
-    midx_m = sp.in1d(header, whitelist)
-    tags = sp.array([x.split('-')[3] for x in header])
-    midx_n = np.core.defchararray.startswith(tags, '1')
-    header = header[midx_m | midx_n]
-    data = data[:, midx_m | midx_n]
-    return header, data
 
 
 def calculateBias(exonTgene, data, exonpos):
@@ -203,11 +191,6 @@ def main():
         exonl = sp.array([int(x.split(':')[1].split('-')[1]) - int(x.split(':')[1].split('-')[0]) + 1 for x in exonpos],
                          dtype='float') / 1000.
         data /= sp.tile(exonl[:, sp.newaxis], data.shape[1])
-
-    ### Subset to whitelist
-    if options.fn_white != '-':
-        logging.info("Subsetting to whitelist")
-        header, data = whitelisting(options, header, data)
 
     ### Calculate 3'/5' Bias
     logging.info("Calculate Bias")
