@@ -142,7 +142,7 @@ def calculateBias(exonTgene, data, exonpos):
 def main():
     ### Parse options
     options = parse_options(sys.argv)
-    filt = int(options.filt)
+    # filt = int(options.filt)
 
     #### set up logger
     logging.basicConfig(filename=options.fn_log, level=0, format='%(asctime)s - %(levelname)s - %(message)s')
