@@ -85,6 +85,7 @@ def prepare_kmers(options, regions):
                     kmers2[i].add(seq[s:s + options.k])
     # MM: kmers1/2 now consist of sets of kmers of length k, extraced from the fasta file
     #     (kmers that match one entry in annotation are in one set)
+    cPickle.dump((kmers1, kmers2), open("prepared.pickle", 'w'), -1)
     return (kmers1, kmers2)
 
 
@@ -174,7 +175,7 @@ def get_counts_from_single_fastq(fn_fastqs, kmers1, kmers2, options):
         else:
             fh = open(fn_fastq, 'r')
         for l, line in enumerate(fh):
-            if l % 4 != 1:
+            if l % 4 != 1: #MM fastq-file specific numberssh
                 continue
             cnt += 1
             if not use_fraction and cnt1 > options.kmer_thresh:
@@ -216,5 +217,6 @@ def get_counts_from_single_fastq(fn_fastqs, kmers1, kmers2, options):
                     pass
         fh.close()
 
+    # MM: returns counts per gene (each kmers[y] contains all kmers that belong to one gene)
     return sp.array([[sp.sum([all_kmers1[x] for x in kmers1[y]]), sp.sum([all_kmers2[x] for x in kmers2[y]])] for y in
                      range(len(kmers1))], dtype='float').ravel('C')
