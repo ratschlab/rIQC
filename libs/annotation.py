@@ -45,7 +45,7 @@ def filterToInterestingGenes(exonTgene, length):
 
 
 
-def getAnnotationTable(options):
+def getAnnotationTable(options, lengthFilter=True):
     if options.fn_genes == '-':
         if os.path.exists(options.fn_anno_tmp):
             exonTgene = sp.loadtxt(options.fn_anno_tmp, delimiter='\t', dtype='string')
@@ -63,7 +63,8 @@ def getAnnotationTable(options):
         exonTgene = removeNonChrContigs(exonTgene)
 
         ## filter exonTgene to only retain genes we are interested in (length, splicing, etc)
-        exonTgene = filterToInterestingGenes(exonTgene, options.length)
+        if(lengthFilter):
+            exonTgene = filterToInterestingGenes(exonTgene, options.length)
 
     else:
         exonTgene = sp.loadtxt(options.fn_genes, delimiter=' ', dtype='string')

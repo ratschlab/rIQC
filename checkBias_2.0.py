@@ -143,13 +143,14 @@ def main():
     exonTgene = getAnnotationTable(options)
 
     if options.fastq_dir != '-':
-        if(options.fn_pickle_filt != None and os.path.exists(options.fn_pickle_filt)):
-            (kmers1, kmers2) = cPickle.load(open(options.fn_pickle_filt, 'r'))
-        elif(os.path.exists('filt_kmers_k%i.pickle' % options.k)):
-            (kmers1, kmers2) = cPickle.load(open(('filt_kmers_k%i.pickle' % options.k), 'r'))
-        else:
-            kmers1, kmers2 = prepare_kmers(options, exonTgene)
-            kmers1, kmers2 = clean_kmers(options, kmers1, kmers2)
+        #if(options.fn_pickle_filt != None and os.path.exists(options.fn_pickle_filt)):
+        #    (kmers1, kmers2) = cPickle.load(open(options.fn_pickle_filt, 'r'))
+        #elif(os.path.exists('filt_kmers_k%i.pickle' % options.k)):
+        #    (kmers1, kmers2) = cPickle.load(open(('filt_kmers_k%i.pickle' % options.k), 'r'))
+        #else:
+        kmers1, kmers2 = prepare_kmers(options, exonTgene)
+        kmers1, kmers2 = clean_kmers(options, kmers1, kmers2)
+
         fastq_list = glob.glob(os.path.join(options.fastq_dir, '*.fastq')) \
                      + glob.glob(os.path.join(options.fastq_dir, '*.fastq.gz')) \
                      + glob.glob(os.path.join(options.fastq_dir, '*.fq')) \
