@@ -71,16 +71,16 @@ def getAnnotationTable(options, lengthFilter=True):
     return exonTgene
 
 
-def getTranscriptLength(rec, iFirst, iLast):
-    expieces = sp.array(rec.split(':')[1].split(','))
-    iEnd = expieces.shape[0] - iLast
+def getTranscriptLength(rec):
+    expieces = sp.array(rec.split(':')[1].split(',')) # list of all exonintervals
+    iEnd = expieces.shape[0]
     lgt = 0
 
-    for i, x in enumerate(expieces[iFirst:]):
+    for i, x in enumerate(expieces[0:]):
         start, end = x.split('-')
         if i == 0:
             lgt += (int(end) - int(start) + 1) / 2.
-        elif i == iLast - 1:
+        elif i == (iEnd - 1):
             lgt += (int(end) - int(start) + 1) / 2.
         else:
             lgt += int(end) - int(start) + 1
@@ -292,12 +292,11 @@ def processSingleTranscriptGenes(tcrpt):
         return None
 
     ### reformat to somewhat convenient reading
-    firstEx = tcrpt.split(':')[1].split(',')[0]
-    lastEx = tcrpt.split(':')[1].split(',')[-1]
+    #format# ID : exon1positions,exon2positions,...,exonNpositions : STRAND
 
-    firstEx = tcrpt.split(':')[0] + ':' + firstEx + ':' + tcrpt.split(':')[2]
-    lastEx = tcrpt.split(':')[0] + ':' + lastEx + ':' + tcrpt.split(':')[2]
-    return [firstEx, lastEx, tcrpt.split(':')[0], tcrpt.split(':')[2], getTranscriptLength(tcrpt, 0, 0)]
+    firstEx = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[0] + ':' + tcrpt.split(':')[2]
+    lastEx = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[-1] + ':' + tcrpt.split(':')[2]
+    return [firstEx, lastEx, tcrpt.split(':')[0], tcrpt.split(':')[2], getTranscriptLength(tcrpt)]
 
 
 def processMultiTranscriptGenes(tcrpts):
@@ -319,7 +318,7 @@ def processMultiTranscriptGenes(tcrpts):
     dummy, uidx, dists = ut.unique_rows(myExonsInt, index=True, counts=True)
     N_match = sp.sum(dists == len(tcrpts))
 
-    if N_match < 3:  ### i want at lest 3 constitutive exons
+    if N_match < 3:  ### i want at least 3 constitutive exons
         return None
 
     ### get constitutitve exons

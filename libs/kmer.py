@@ -139,10 +139,10 @@ def clean_kmers(options, kmers1, kmers2):
     if(float(total) != 0):
         print 'Removed %i non-unique kmers (%.2f percent)' % (removed, removed / float(total) * 100)
 
-    #if(options.fn_pickle_filt != None):
-    #    cPickle.dump((kmers1, kmers2), open(options.fn_pickle_filt, 'w'), -1)
-    #else:
-    #    cPickle.dump((kmers1, kmers2), open(('filt_kmers_k%i.pickle' % options.k), 'w'), -1)
+    if(options.fn_pickle_filt != None):
+        cPickle.dump((kmers1, kmers2), open(options.fn_pickle_filt, 'w'), -1)
+    else:
+        cPickle.dump((kmers1, kmers2), open(('filt_kmers_k%i.pickle' % options.k), 'w'), -1)
     return (kmers1, kmers2)
 
 
@@ -174,7 +174,7 @@ def get_counts_from_single_fastq(fn_fastqs, kmers1, kmers2, options):
         else:
             fh = open(fn_fastq, 'r')
         for l, line in enumerate(fh):
-            if l % 4 != 1: #MM fastq-file specific numberssh
+            if l % 4 != 1: #MM 4 is a fastq-file specific number
                 continue
             cnt += 1
             if not use_fraction and cnt1 > options.kmer_thresh:
