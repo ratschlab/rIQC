@@ -14,7 +14,7 @@ NMB_CHR = 23
 SEQ_NAME = 0    # name of chromosome or scaffold
 SOURCE = 1      # name of program that generated this feature
 FEATURE = 2     # feature type name (e.g. "gene", "transcript", "exon")
-                #  type of feature (term or accession from SOFA sequence ontology)
+                # type of feature (term or accession from SOFA sequence ontology)
 START = 3       # start position of feature (seq numbering starting at 1)
 END = 4         # end position of feature (seq numbering starting at 1)
 SCORE = 5       # a floating point value
@@ -22,7 +22,8 @@ STRAND = 6      # + (forward) or - (reverse)
 FRAME = 7       # 0/1/2 : position in codon
 ATTRIBUTE = 8   # semicolon-separated list of tag-value pairs
 
-def removeNonChrContigs(exonTgene):
+
+def __remove_non_chr_contigs(exonTgene):
     chr_whitelist = [str(x) for x in range(NMB_CHR)]
     chr_whitelist.extend(['chr%i' % i for i in range(NMB_CHR)])
     chr_whitelist.extend(['chrx', 'chry', 'chrm', 'x', 'y', 'm', 'mt'])
@@ -30,7 +31,8 @@ def removeNonChrContigs(exonTgene):
     
     return exonTgene[k_idx, :]
 
-def filterToInterestingGenes(exonTgene, length):
+
+def __filter_to_interesting_genes(exonTgene, length):
     t_25 = spst.scoreatpercentile(exonTgene[:, 4].astype('float'), 25)
     t_75 = spst.scoreatpercentile(exonTgene[:, 4].astype('float'), 75)
 
@@ -46,27 +48,26 @@ def filterToInterestingGenes(exonTgene, length):
     return exonTgene[k_idx, :]
 
 
-
-def getAnnotationTable(options, lengthFilter=True):
+def get_annotation_table(options, lengthFilter=True):
     if options.fn_genes == '-':
         if os.path.exists(options.fn_anno_tmp):
             exonTgene = sp.loadtxt(options.fn_anno_tmp, delimiter='\t', dtype='string')
         else:
             if options.fn_anno.lower().endswith('gff') or options.fn_anno.lower().endswith('gff3'):
-                exonTgene = readAnnotationFile(options.fn_anno, options.protein_coding_filter, format='gff')
+                exonTgene = __read_annotation_file(options.fn_anno, options.protein_coding_filter, format='gff')
             elif options.fn_anno.lower().endswith('gtf'):
-                exonTgene = readAnnotationFile(options.fn_anno, options.protein_coding_filter, format='gtf')
+                exonTgene = __read_annotation_file(options.fn_anno, options.protein_coding_filter, format='gtf')
             else:
                 raise Exception(
                     "Only annotation files in formats: gff and gtf are supported. File name must end accordingly")
             sp.savetxt(options.fn_anno_tmp, exonTgene, delimiter='\t', fmt='%s')
 
         ### remove non chr contigs
-        exonTgene = removeNonChrContigs(exonTgene)
+        exonTgene = __remove_non_chr_contigs(exonTgene)
 
         ## filter exonTgene to only retain genes we are interested in (length, splicing, etc)
         if(lengthFilter):
-            exonTgene = filterToInterestingGenes(exonTgene, options.length)
+            exonTgene = __filter_to_interesting_genes(exonTgene, options.length)
 
     else:
         exonTgene = sp.loadtxt(options.fn_genes, delimiter=' ', dtype='string')
@@ -74,27 +75,20 @@ def getAnnotationTable(options, lengthFilter=True):
     return exonTgene
 
 
-def getTranscriptLength(rec):
-    expieces = sp.array(rec.split(':')[1].split(',')) # list of all exonintervals
-    iEnd = expieces.shape[0]
+def __get_transcript_length(rec):
+    # list of all exonintervals
+    expieces = sp.array(rec.split(':')[1].split(',')) 
     lgt = 0
 
     for i, x in enumerate(expieces[0:]):
         start, end = x.split('-')
-        if i == 0:
-            lgt += (int(end) - int(start) + 1) / 2.
-        elif i == (iEnd - 1):
-            lgt += (int(end) - int(start) + 1) / 2.
-        else:
-            lgt += int(end) - int(start) + 1
-
+        lgt += int(end) - int(start) + 1
     return lgt
 
 
-def getTranscriptLengthBex(rec, firstEx, lastEx):
+def __get_transcript_length_bex(rec, firstEx, lastEx):
     """
-    Returns transcript legnth defined as 0.5 first exon
-    everything in between and 0.5 last exon
+    Returns transcript legnth defined sum of length of exons
     """
     expieces = sp.array(rec.split(':')[1].split(','))
     foundFirst = False
@@ -115,7 +109,7 @@ def getTranscriptLengthBex(rec, firstEx, lastEx):
     return lgt
 
 
-def getOverlapGenes(fn, format):
+def __get_overlap_genes(fn, format):
     """
     Returns a list of gene names which are overlapping
     """
@@ -129,7 +123,7 @@ def getOverlapGenes(fn, format):
             lSpl = l.strip('\n').split('\t')
             if lSpl[FEATURE].lower() != 'gene':
                 continue
-            tags = get_tags_gtf(lSpl[ATTRIBUTE])
+            tags = __get_tags_gtf(lSpl[ATTRIBUTE])
             data.append([tags['gene_id'], '%s:%s-%s' % (lSpl[SEQ_NAME], lSpl[START], lSpl[END])])
     elif format in ['gff', 'gff3']:
         for l in open(fn, 'r'):
@@ -140,7 +134,7 @@ def getOverlapGenes(fn, format):
             if not lSpl[FEATURE].lower() in ['gene', 'lincrna_gene', 'mirna_gene', 'processed_transcript', 'rrna_gene',
                                        'snrna_gene', 'snorna_gene']:
                 continue
-            tags = get_tags_gff3(lSpl[ATTRIBUTE])
+            tags = __get_tags_gff3(lSpl[ATTRIBUTE])
             try:
                 data.append([tags['ID'], '%s:%s-%s' % (lSpl[SEQ_NAME], lSpl[START], lSpl[END])])
             except KeyError:
@@ -205,7 +199,7 @@ def getOverlapGenes(fn, format):
     return sp.unique(myOverlapGenes)
 
 
-def readinganno(fn, overlapgenes, proteinCodingFilter, format):
+def __reading_anno(fn, overlapgenes, proteinCodingFilter, format):
     """
     Reads in all transcript annotations,
     removes overlapping genes and eventually filters for protein-coding genes on the fly
@@ -222,13 +216,13 @@ def readinganno(fn, overlapgenes, proteinCodingFilter, format):
         if lSpl[FEATURE].lower() != 'exon':
             continue
         if format == 'gtf':
-            tags = get_tags_gtf(lSpl[ATTRIBUTE])
+            tags = __get_tags_gtf(lSpl[ATTRIBUTE])
             try:
                 transcripts[tags['transcript_id']].append('-'.join([lSpl[START], lSpl[END]]))
             except KeyError:
                 transcripts[tags['transcript_id']] = ['-'.join([lSpl[START], lSpl[END]])]
         elif format == 'gff':
-            tags = get_tags_gff3(lSpl[ATTRIBUTE])
+            tags = __get_tags_gff3(lSpl[ATTRIBUTE])
             try:
                 transcripts[tags['Parent']].append('-'.join([lSpl[START], lSpl[END]]))
             except KeyError:
@@ -243,7 +237,7 @@ def readinganno(fn, overlapgenes, proteinCodingFilter, format):
         if format == 'gtf':
             if lSpl[FEATURE].lower() != 'transcript':
                 continue
-            tags = get_tags_gtf(lSpl[ATTRIBUTE])
+            tags = __get_tags_gtf(lSpl[ATTRIBUTE])
 
             key = tags['gene_id']
             gene_type = tags['gene_type']
@@ -257,7 +251,7 @@ def readinganno(fn, overlapgenes, proteinCodingFilter, format):
             if not lSpl[FEATURE].lower() in ['transcript', 'pseudogenic_transcript', 'snrna', 'snorna', 'rrna', 'pseudogene',
                                        'processed_transcript', 'processed_pseudogene', 'lincrna', 'mirna']:
                 continue
-            tags = get_tags_gff3(lSpl[ATTRIBUTE])
+            tags = __get_tags_gff3(lSpl[ATTRIBUTE])
 
             gene_type = tags['gene_type']
 
@@ -287,7 +281,7 @@ def readinganno(fn, overlapgenes, proteinCodingFilter, format):
     return data
 
 
-def processSingleTranscriptGenes(tcrpt):
+def __process_single_transcript_genes(tcrpt):
     assert len(tcrpt) == 1, "Too many transcripts to process"
 
     ### checking that we have at least two exons
@@ -300,11 +294,12 @@ def processSingleTranscriptGenes(tcrpt):
 
     firstEx = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[0] + ':' + tcrpt.split(':')[2]
     lastEx = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[-1] + ':' + tcrpt.split(':')[2]
-    return [firstEx, lastEx, tcrpt.split(':')[0], tcrpt.split(':')[2], getTranscriptLength(tcrpt)]
+    return [firstEx, lastEx, tcrpt.split(':')[0], tcrpt.split(':')[2], __get_transcript_length(tcrpt)]
 
 
-def processMultiTranscriptGenes(tcrpts):
+def __process_multi_transcript_genes(tcrpts):
     ### all transcript isoforms have at least two exons
+    #MM drinlassen, aber notiz!
     if sp.sum(np.core.defchararray.find(tcrpts, ',') != -1) != len(tcrpts):
         return None
 
@@ -322,6 +317,7 @@ def processMultiTranscriptGenes(tcrpts):
     dummy, uidx, dists = ut.unique_rows(myExonsInt, index=True, counts=True)
     N_match = sp.sum(dists == len(tcrpts))
 
+    ## MM drinlassen für slope aber nicht für compensation
     if N_match < 3:  ### i want at least 3 constitutive exons
         return None
 
@@ -335,28 +331,28 @@ def processMultiTranscriptGenes(tcrpts):
     ## get length of all transcripts
     myExStrucL = []
     for i, rec in enumerate(tcrpts):
-        myExStrucL.append(getTranscriptLengthBex(rec, firstEx, lastEx))
+        myExStrucL.append(__get_transcript_length_bex(rec, firstEx, lastEx))
 
     firstEx = tcrpts[0].split(':')[0] + ':' + firstEx + ':' + tcrpts[0].split(':')[2]
     lastEx = tcrpts[0].split(':')[0] + ':' + lastEx + ':' + tcrpts[0].split(':')[2]
     return [firstEx, lastEx, tcrpts[0].split(':')[0], tcrpts[0].split(':')[2], str(sp.median(myExStrucL))]
 
 
-def readAnnotationFile(fn, proteinCodingFilter, format):
+def __read_annotation_file(fn, proteinCodingFilter, format):
     ### get list of overlapping genes
-    overlapgenes = getOverlapGenes(fn, format)
+    overlapgenes = __get_overlap_genes(fn, format)
 
     ### reading in
-    data = readinganno(fn, overlapgenes, proteinCodingFilter, format)
+    data = __reading_anno(fn, overlapgenes, proteinCodingFilter, format)
 
     uqgid = data.keys()  ###  unique gene ids
     newdata = []
     for gid in uqgid:
         ### process transcripts
         if len(data[gid]) == 1:
-            temp = processSingleTranscriptGenes(data[gid])
+            temp = __process_single_transcript_genes(data[gid])
         else:
-            temp = processMultiTranscriptGenes(data[gid])
+            temp = __process_multi_transcript_genes(data[gid])
 
         ### make sure it has been processed correctly
         if temp is None:
@@ -372,7 +368,7 @@ def readAnnotationFile(fn, proteinCodingFilter, format):
     return sp.array(newdata)
 
 
-def get_tags_gff3(tagline):
+def __get_tags_gff3(tagline):
     """Extract tags from given tagline in a gff or gff3 file"""
 
     tags = dict()
@@ -382,7 +378,7 @@ def get_tags_gff3(tagline):
     return tags
 
 
-def get_tags_gtf(tagline):
+def __get_tags_gtf(tagline):
     """Extract tags from given tagline in a gtf file"""
 
     tags = dict()
