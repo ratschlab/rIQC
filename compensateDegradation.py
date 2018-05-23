@@ -205,9 +205,12 @@ def main():
         iOK = sp.union1d(np.where(mycounts[:, i, 0] > 0)[0],
                          np.where(mycounts[:, i, 1] > 0)[0])
 
+        #MM replace 0 with 1 to avoid division by 0
+        mycounts[np.where(mycounts[:, i, 0] == 0)[0], i, 0] = 1
+
         #MM scale-entrys stay 0 if they are not in iOK
         #MM to avoid division by zero we take max(count, 1)
-        scale[iOK, i] = (mycounts[iOK, i, 1] / max(mycounts[iOK, i, 0], 1))
+        scale[iOK, i] = (mycounts[iOK, i, 1] / mycounts[iOK, i, 0])
 
         for j in range(options.nmb_bins):
             idx_l = sp.intersect1d(np.where(upperLengthBound / options.nmb_bins * j < exonLengths)[0],
