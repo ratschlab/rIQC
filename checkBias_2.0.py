@@ -124,6 +124,7 @@ def calculateBias(exonTgene, data, exonpos):
 
         mycounts[i, :, 0] = data[istart, :]
         mycounts[i, :, 1] = data[iend, :]
+    
     return mycounts
 
 
@@ -200,11 +201,12 @@ def main():
     logging.info("Find Median")
     vals = []
     for i in xrange(mycounts.shape[1]):
-        if options.doPseudo:
+	if options.doPseudo:
             ### AK: I had to filter for counts with some signal, otherwise the median is always 1.0 ...
             iOK = ((mycounts[:, i, 1] > 0) | (mycounts[:, i, 0] > 0))
             ratio = sp.percentile((mycounts[iOK, i, 1] + 1) / (mycounts[iOK, i, 0] + 1), 50)
-        else:
+        
+	else:
             ### AK: This version allows for the ocurrence of infs in some cases where there should be nan's
             # iOK = ~(sp.isnan(mycounts[:,i,0])) & ~(sp.isnan(mycounts[:,i,1]))
             # tmp = ((mycounts[:,i,1] )[iOK]) / ((mycounts[:,i,0] )[iOK] )

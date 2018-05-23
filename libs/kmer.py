@@ -1,4 +1,5 @@
 import sys
+import pdb
 import scipy as sp
 import os
 import time
@@ -85,6 +86,7 @@ def prepare_kmers(options, regions):
                     kmers2[i].add(seq[s:s + options.k])
     # MM: kmers1/2 now consist of sets of kmers of length k, extraced from the fasta file
     #     (kmers that match one entry in annotation are in one set)
+    
     return (kmers1, kmers2)
 
 
@@ -143,6 +145,7 @@ def clean_kmers(options, kmers1, kmers2):
         cPickle.dump((kmers1, kmers2), open(options.fn_pickle_filt, 'w'), -1)
     else:
         cPickle.dump((kmers1, kmers2), open(('filt_kmers_k%i.pickle' % options.k), 'w'), -1)
+    
     return (kmers1, kmers2)
 
 

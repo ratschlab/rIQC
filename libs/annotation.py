@@ -27,6 +27,7 @@ def removeNonChrContigs(exonTgene):
     chr_whitelist.extend(['chr%i' % i for i in range(NMB_CHR)])
     chr_whitelist.extend(['chrx', 'chry', 'chrm', 'x', 'y', 'm', 'mt'])
     k_idx = sp.array([x.lower() in chr_whitelist for x in exonTgene[:, 2]], dtype='bool')
+    
     return exonTgene[k_idx, :]
 
 def filterToInterestingGenes(exonTgene, length):
@@ -41,6 +42,7 @@ def filterToInterestingGenes(exonTgene, length):
         k_idx = sp.where(exonTgene[:, 4].astype('float') < t_25)[0]
     else:
         raise Exception('--length should be one of: uq, mq, lq -- currently is: %s' % length)
+    
     return exonTgene[k_idx, :]
 
 
@@ -68,6 +70,7 @@ def getAnnotationTable(options, lengthFilter=True):
 
     else:
         exonTgene = sp.loadtxt(options.fn_genes, delimiter=' ', dtype='string')
+
     return exonTgene
 
 
@@ -84,6 +87,7 @@ def getTranscriptLength(rec):
             lgt += (int(end) - int(start) + 1) / 2.
         else:
             lgt += int(end) - int(start) + 1
+
     return lgt
 
 
