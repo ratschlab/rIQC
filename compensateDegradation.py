@@ -222,7 +222,8 @@ def main():
                 avg_scale[i, j, 1] = comb_idx.shape[0]
 
 
-
+    logging.info("The scale for each file: ")
+    logging.info(avg_scale)
 
 
 
