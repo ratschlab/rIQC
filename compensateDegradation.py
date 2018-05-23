@@ -70,7 +70,7 @@ def parse_options(argv):
 
     opt_kmer = OptionGroup(parser, 'Options for k-mer counting')
 
-    opt_kmer.add_option('', '', dest='k', type='int', help='Length of k-mer for alignmentfree counting [27]',
+    opt_kmer.add_option('', '--kmer_length', dest='k', type='int', help='Length of k-mer for alignmentfree counting [27]',
                         default=27)
     opt_kmer.add_option('', '--reads_kmer', dest='kmer_thresh', type='float',
                         help='Required active reads per sample [50000] / if btw 0 and 1 fraction of input reads considered',
