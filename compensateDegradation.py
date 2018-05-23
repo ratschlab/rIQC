@@ -108,7 +108,11 @@ def main():
 
     ### Read annotation from file
     logging.info("Reading Annotation from file")
-    exonTgene = getAnnotationTable(options, False) #no filtering for certain gene length (lengthFilter=False)
+
+    # MM type(exonTgene) is np.ndarray
+    # MM rows:_genes
+    # MM 6 columns: first_constitutive_exon last_constitutive_exon chromosome strand distance(basepairs) genname
+    exonTgene = get_annotation_table(options, False) #no filtering for certain gene length (lengthFilter=False)
 
     if options.fastq_dir != '-':
         if(options.fn_pickle_filt != None and os.path.exists(options.fn_pickle_filt)):
@@ -116,6 +120,9 @@ def main():
         elif(os.path.exists('filt_kmers_k%i.pickle' % options.k)):
             (kmers1, kmers2) = cPickle.load(open(('filt_kmers_k%i.pickle' % options.k), 'r'))
         else:
+            # MM type(kmers1) is list
+            # MM kmers1 contains kmers in first consecutive exon
+            # MM kmers2 contains kmers in last consecutive exon
             kmers1, kmers2 = prepare_kmers(options, exonTgene)
             kmers1, kmers2 = clean_kmers(options, kmers1, kmers2)
 
@@ -124,8 +131,14 @@ def main():
                      + glob.glob(os.path.join(options.fastq_dir, '*.fq')) \
                      + glob.glob(os.path.join(options.fastq_dir, '*.fq.gz'))
 
+        # MM data is np.ndarray
+        # MM data contains all counts for first and last exon of each gene
+        # MM in case of multiple files in directory: each column contains counts for one file
         data = get_counts_from_multiple_fastq(fastq_list, kmers1, kmers2, options)
+        # MM exonpos is np.ndarray
+        # MM exonpos contains chr-position-strand information for first and last exon of each gene
         exonpos = exonTgene[:, :2].ravel('C')
+
     elif options.dir_bam != '-':
         if options.sparse_bam:
             bam_list = glob.glob(os.path.join(options.dir_bam, '*.hdf5'))
@@ -159,6 +172,7 @@ def main():
     mycounts = sp.zeros((exonTgene.shape[0], data.shape[1], 2))
     for i, rec in enumerate(exonTgene):
 
+        ##MM istart is a boolean np.ndarray
         istart = exonpos == rec[0]
         iend = exonpos == rec[1]
         if sp.sum(istart) == 0:
@@ -169,55 +183,44 @@ def main():
                 and int(exonpos[istart][0].split(':')[1].split('-')[0]) < int(exonpos[iend][0].split(':')[1].split('-')[0]):
             istart, iend = iend, istart
 
+        # MM mycounts is np.ndarray
         mycounts[i, :, 0] = data[istart, :]
         mycounts[i, :, 1] = data[iend, :]
 
+    #MM for binning
     exonLengths = exonTgene[:, 4].astype(float)
     upperLengthBound = np.ceil(np.amax(exonLengths))
-    gradients = sp.zeros((mycounts.shape[0], 2))
+    ##MM
+    gradients = sp.zeros(mycounts.shape[0], mycounts.shape[1])
+    #MM average gradients with #genes that contribute
+    avg_grad = sp.zeros(mycounts.shape[1], options.nmb_bins, 2)
 
-    assert exonLengths.shape[0] == gradients.shape[0]
+    #MM for every file that was read in
+    for i in xrange(mycounts.shape[1]):
+        #MM avoid division by zero
+        #MM iOK is a boolean np.ndarray as long as number of genes
+        iOK = np.where(exonLengths > 0)
 
-    for i in range(gradients.shape[1]):
-        assert gradients.shape[1] == 2
-        iOK = ((mycounts[:, i, 1] > 0))
-        #set all zero-counts from the 5' end to 1 to avoid division by zero
-        mycounts[np.where(mycounts[:, i, 0] == 0)[0], i, 0] = 1
-
-        # gradients-entrys stay 0 if they are not in iOK
+        #MM gradients-entrys stay 0 if they are not in iOK
         gradients[iOK, i] = (mycounts[iOK, i, 1] - mycounts[iOK, i, 0]) / exonLengths[iOK]
 
-    # average gradients with #genes that contribute
-    avg_grad_1 = sp.zeros(options.nmb_bins, 2)
-    avg_grad_2 = sp.zeros(options.nmb_bins, 2)
+        for j in range(options.nmb_bins):
+            idx_l = np.where(
+                upperLengthBound / options.nmb_bins * j < exonLengths <= upperLengthBound / options.nmb_bins * (j + 1))
 
+            # indices of genes that have right length and gradient is non-zero
+            comb_idx = sp.intersect1d(iOK, idx_l)
 
-    idx_d_1 = np.where(gradients[:, 0] > 0) #we get back indices
-    idx_d_2 = np.where(gradients[:, 1] > 0)
-    for i in range(options.nmb_bins):
-        idx_l = np.where(exonLengths > upperLengthBound / options.nmb_bins * i
-                         and exonLengths <= upperLengthBound / options.nmb_bins * (i+1) )
-        #for kmer1
-        comb_idx = sp.intersect1d(idx_d_1, idx_l) #indices of genes that have right length and gradient is non-zero
-        if(idx_d_1.shape[0] != 0):
-            avg_grad_1[i, 0] = sp.sum(gradients[comb_idx, 0]) / idx_d_1.shape[0]
-            avg_grad_1[i, 1] = idx_d_1.shape[0]
+            if(comb_idx.shape[0] != 0):
+                avg_grad[i, j, 0] = sp.sum(gradients[comb_idx, i]) / comb_idx.shape[0]
+                avg_grad[i, j, 1] = comb_idx.shape[0]
         else:
-            avg_grad_1[i, 0] = 0
-            avg_grad_1[i, 1] = idx_d_1.shape[0]
+            avg_grad[i, j, 0] = 0
+            avg_grad[i, j, 1] = comb_idx.shape[0]
 
-        #for kmer2
-        comb_idx = sp.intersect1d(idx_d_2, idx_l)
-        if (idx_d_2.shape[0] != 0):
-            avg_grad_2[i, 0] = sp.sum(gradients[comb_idx, 0]) / idx_d_2.shape[0]
-            avg_grad_2[i, 1] = idx_d_2.shape[0]
-        else:
-            avg_grad_2[i, 0] = 0
-            avg_grad_2[i, 1] = idx_d_2.shape[0]
+        logging.info("The average gradients in %s per bin are: " % i)
+        logging.info(avg_grad[i, :, :])
 
-    logging.info("The average gradients per bin are: ")
-    logging.info(avg_grad_1)
-    logging.info(avg_grad_2)
 
 
 

@@ -124,6 +124,7 @@ def calculateBias(exonTgene, data, exonpos):
 
         mycounts[i, :, 0] = data[istart, :]
         mycounts[i, :, 1] = data[iend, :]
+
     return mycounts
 
 
@@ -140,7 +141,8 @@ def main():
         log.addHandler(consoleHandler)
     ### Read annotation from file
     logging.info("Reading Annotation from file")
-    exonTgene = getAnnotationTable(options)
+
+    exonTgene = get_annotation_table(options)
 
     if options.fastq_dir != '-':
         if(options.fn_pickle_filt != None and os.path.exists(options.fn_pickle_filt)):
@@ -159,8 +161,10 @@ def main():
             header = fastq_list
         else:
             header = ','.join(fastq_list)
+
         data = get_counts_from_multiple_fastq(fastq_list, kmers1, kmers2, options)
         exonpos = exonTgene[:, :2].ravel('C')
+
     elif options.dir_bam != '-':
         if options.sparse_bam:
             bam_list = glob.glob(os.path.join(options.dir_bam, '*.hdf5'))
@@ -216,6 +220,9 @@ def main():
             ratio = sp.percentile(mycounts[iOK, i, 1] / mycounts[iOK, i, 0], 50)
         assert sp.sum(sp.isnan(ratio)) + sp.sum(sp.isinf(ratio)) == 0
         vals.append(ratio)
+
+
+
     vals = sp.array(vals)
 
     sidx = sp.argsort(vals)

@@ -63,7 +63,7 @@ def prepare_kmers(options, regions):
                       % (regions.shape[0] - cnt, (time.time() - t0) / cnt * (regions.shape[0] - cnt))
             cnt += 1
 
-            # MM: TODO: when would that happen?
+            # TODO: when would that happen?
             if len(regions.shape) == 1:
                 start1 = int(rec.split(':')[1].split('-')[0])
                 end1 = int(rec.split(':')[1].split('-')[1])
@@ -151,13 +151,13 @@ def get_counts_from_multiple_fastq(fn_fastq, kmers1, kmers2, options):
         files"""
 
     if not options.separate_files:
-        return get_counts_from_single_fastq(fn_fastq, kmers1, kmers2, options)[:, sp.newaxis]
+        return __get_counts_from_single_fastq(fn_fastq, kmers1, kmers2, options)[:, sp.newaxis]
     else:
-        return sp.hstack([get_counts_from_single_fastq(fn_fastq[i], kmers1, kmers2, options)[:, sp.newaxis] for i in
+        return sp.hstack([__get_counts_from_single_fastq(fn_fastq[i], kmers1, kmers2, options)[:, sp.newaxis] for i in
                           range(len(fn_fastq))])
 
 
-def get_counts_from_single_fastq(fn_fastqs, kmers1, kmers2, options):
+def __get_counts_from_single_fastq(fn_fastqs, kmers1, kmers2, options):
     all_kmers1 = dict([[_, 0] for s in kmers1 for _ in s])
     all_kmers2 = dict([[_, 0] for s in kmers2 for _ in s])
 
