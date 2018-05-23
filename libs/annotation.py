@@ -299,7 +299,7 @@ def __process_single_transcript_genes(tcrpt):
 
 def __process_multi_transcript_genes(tcrpts):
     ### all transcript isoforms have at least two exons
-    #MM drinlassen, aber notiz!
+    #MM drinlassen, aber notiz
     if sp.sum(np.core.defchararray.find(tcrpts, ',') != -1) != len(tcrpts):
         return None
 
@@ -317,7 +317,7 @@ def __process_multi_transcript_genes(tcrpts):
     dummy, uidx, dists = ut.unique_rows(myExonsInt, index=True, counts=True)
     N_match = sp.sum(dists == len(tcrpts))
 
-    ## MM drinlassen für slope aber nicht für compensation
+    #TODO drinlassen fuer slope aber nicht fuer compensation
     if N_match < 3:  ### i want at least 3 constitutive exons
         return None
 

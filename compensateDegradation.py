@@ -1,3 +1,5 @@
+import numpy as np
+import scipy as sp
 from optparse import OptionParser, OptionGroup
 import logging
 import glob
