@@ -194,9 +194,9 @@ def main():
     exonLengths = exonTgene[:, 4].astype(float)
     upperLengthBound = np.ceil(np.amax(exonLengths))
     ##MM
-    gradients = sp.zeros((mycounts.shape[0], mycounts.shape[1]))
-    #MM average gradients with #genes that contribute
-    avg_grad = sp.zeros((mycounts.shape[1], options.nmb_bins, 2))
+    scale = sp.zeros((mycounts.shape[0], mycounts.shape[1]))
+    #MM average scales with #genes that contribute
+    avg_scale = sp.zeros((mycounts.shape[1], options.nmb_bins, 2))
 
     #MM for every file that was read in
     for i in xrange(mycounts.shape[1]):
@@ -204,26 +204,26 @@ def main():
         #MM iOK is a boolean np.ndarray as long as number of genes
         iOK = np.where(exonLengths > 0)[0]
 
-        #MM gradients-entrys stay 0 if they are not in iOK
-        gradients[iOK, i] = (mycounts[iOK, i, 1] - mycounts[iOK, i, 0]) / exonLengths[iOK]
+        #MM scale-entrys stay 0 if they are not in iOK
+        scale[iOK, i] = (mycounts[iOK, i, 1] / mycounts[iOK, i, 0])
 
         for j in range(options.nmb_bins):
-            idx_l = sp.intersect1d(np.where(upperLengthBound / options.nmb_bins * j < exonLengths)[0], np.where(exonLengths <= upperLengthBound / options.nmb_bins * (j + 1))[0])
+            idx_l = sp.intersect1d(np.where(upperLengthBound / options.nmb_bins * j < exonLengths)[0],
+                                   np.where(exonLengths <= upperLengthBound / options.nmb_bins * (j + 1))[0])
 
             # indices of genes that have right length and gradient is non-zero
             comb_idx = sp.intersect1d(iOK, idx_l)
 
             if(comb_idx.shape[0] != 0):
-                avg_grad[i, j, 0] = sp.sum(gradients[comb_idx, i]) / comb_idx.shape[0]
-                avg_grad[i, j, 1] = comb_idx.shape[0]
+                avg_scale[i, j, 0] = sp.sum(scale[comb_idx, i]) / comb_idx.shape[0]
+                avg_scale[i, j, 1] = comb_idx.shape[0]
             else:
-                avg_grad[i, j, 0] = 0
-                avg_grad[i, j, 1] = comb_idx.shape[0]
+                avg_scale[i, j, 0] = 0
+                avg_scale[i, j, 1] = comb_idx.shape[0]
 
-            pdb.set_trace()
 
-        #print "The average gradients in %s per bin are: " % i
-        #print avg_grad[i, :, :]
+
+
 
 
 
