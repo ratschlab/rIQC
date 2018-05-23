@@ -193,25 +193,27 @@ def main():
     #MM for binning
     exonLengths = exonTgene[:, 4].astype(float)
     upperLengthBound = np.ceil(np.amax(exonLengths))
-    ##MM
+
     scale = sp.zeros((mycounts.shape[0], mycounts.shape[1]))
     #MM average scales with #genes that contribute
     avg_scale = sp.zeros((mycounts.shape[1], options.nmb_bins, 2))
 
     #MM for every file that was read in
     for i in xrange(mycounts.shape[1]):
-        #MM avoid division by zero
+        #MM only take genes that have some count
         #MM iOK is a boolean np.ndarray as long as number of genes
-        iOK = np.where(exonLengths > 0)[0]
+        iOK = sp.union1d(np.where(mycounts[:, i, 0] > 0)[0],
+                         np.where(mycounts[:, i, 1] > 0)[0])
 
         #MM scale-entrys stay 0 if they are not in iOK
-        scale[iOK, i] = (mycounts[iOK, i, 1] / mycounts[iOK, i, 0])
+        #MM to avoid division by zero we take max(count, 1)
+        scale[iOK, i] = (mycounts[iOK, i, 1] / max(mycounts[iOK, i, 0], 1))
 
         for j in range(options.nmb_bins):
             idx_l = sp.intersect1d(np.where(upperLengthBound / options.nmb_bins * j < exonLengths)[0],
                                    np.where(exonLengths <= upperLengthBound / options.nmb_bins * (j + 1))[0])
 
-            # indices of genes that have right length and gradient is non-zero
+            # indices of genes that have right length and a scale factor
             comb_idx = sp.intersect1d(iOK, idx_l)
 
             if(comb_idx.shape[0] != 0):
