@@ -15,6 +15,7 @@ from libs.viz import *
 from libs.bam import *
 from libs.bam_sparse import *
 from libs.kmer import *
+from libs.count import *
 
 import logging
 
@@ -26,67 +27,72 @@ def parse_options(argv):
 
     sampleinput = OptionGroup(parser, 'Input')
 
-    sampleinput.add_option('-b', '--bam_dir', dest='dir_bam', metavar='FILE', help='Directory of bam files',
-                           default='-')
-    sampleinput.add_option('-F', '--fastq_dir', dest='fastq_dir', metavar='FILE', help='Directory of fastq files',
-                           default='-')
-    sampleinput.add_option('-n', '--fn_bam', dest='fn_bam', metavar='FIlE', help='Specifies single bam file',
-                           default='-')
+    sampleinput.add_option('', '--bam_dir', dest='dir_bam', metavar='FILE',
+                           help='Directory of bam files', default='-')
+    sampleinput.add_option('', '--fastq_dir', dest='dir_fastq', metavar='FILE',
+                           help='Directory of fastq files', default='-')
+    sampleinput.add_option('', '--bam_fn', dest='fn_bam', metavar='FIlE',
+                           help='Specifies single bam file', default='-')
+    sampleinput.add_option('', '--cnt_dir', dest='dir_cnt', metavar='FILE',
+                           help='Directory of pre-produced tab delimited count files', default='-')
 
-    sampleinput.add_option('-a', '--fn_anno', dest='fn_anno', metavar='FILE', help='Annotation', default='-')
+    sampleinput.add_option('', '--anno_fn', dest='fn_anno', metavar='FILE',
+                           help='Annotation', default='-')
 
-    sampleinput.add_option('-G', '--genome', dest='fn_genome', metavar='FILE', help='Path to genome file in fasta',
-                           default='-')
-    sampleinput.add_option('-i', '--genelist', dest='fn_genes', metavar='FILE', help='file with genenames to use',
-                           default='-')
+    sampleinput.add_option('', '--genome', dest='fn_genome', metavar='FILE',
+                           help='Path to genome file in fasta', default='-')
+    sampleinput.add_option('', '--genelist', dest='fn_genes', metavar='FILE',
+                           help='file with genenames to use', default='-')
     sampleinput.add_option('', '--separate_files', dest='separate_files', action="store_true",
                            help='Consider all input files individually [off]', default=False)
 
-
     sampleoutput = OptionGroup(parser, 'Output')
 
-    sampleoutput.add_option('-o', '--fnout', dest='fn_out', metavar='FILE', help='prefix for output', default='out')
-    sampleoutput.add_option('-m', '--fn_anno_tmp', dest='fn_anno_tmp', metavar='FILE',
+    sampleoutput.add_option('', '--out_fn', dest='fn_out', metavar='FILE',
+                            help='prefix for output', default='out')
+    sampleoutput.add_option('', '--anno_tmp_fn', dest='fn_anno_tmp', metavar='FILE',
                             help='Temp file for storing anno info', default='anno.tmp')
     sampleoutput.add_option('', '--pickle_all', dest='fn_pickle_all', metavar='FILE',
                             help='Pickle file for storing all kmers', default=None)
     sampleoutput.add_option('', '--pickle_filt', dest='fn_pickle_filt', metavar='FILE',
                             help='Pickle file for storing filtered/cleaned kmers', default=None)
 
-
     opt_gen = OptionGroup(parser, 'General Options')
 
-    opt_gen.add_option('-q', '--quant', dest='qmode', metavar='STRING',
+    opt_gen.add_option('', '--quant', dest='qmode', metavar='STRING',
                        help='What type of quantification to use [rpkm,raw]', default='raw')
-    opt_gen.add_option('-c', '--pseudocount', dest='doPseudo', action="store_true", help='Add Pseudocounts to ratio',
-                       default=False)
-    opt_gen.add_option('-C', '--count_only', dest='count_only', action="store_true",
+    opt_gen.add_option('', '--pseudocount', dest='doPseudo', action="store_true",
+                       help='Add Pseudocounts to ratio', default=False)
+    opt_gen.add_option('', '--count_only', dest='count_only', action="store_true",
                        help='Only do counting on given input [off]', default=False)
-    opt_gen.add_option('-l', '--length', dest='length', metavar='STRING', help='Length filter [uq,mq,lq]', default='uq')
-    opt_gen.add_option('-g', '--log', dest='fn_log', metavar='FILE', help='Log file', default='out.log')
-    opt_gen.add_option('-v', '--verbose', dest='isVerbose', action="store_true", help='Set Logger To Verbose',
-                       default=False)
+    opt_gen.add_option('', '--length', dest='length', metavar='STRING',
+                       help='Length filter [uq,mq,lq]', default='uq')
+    opt_gen.add_option('-g', '--log', dest='fn_log', metavar='FILE',
+                       help='Log file', default='out.log')
+    opt_gen.add_option('-v', '--verbose', dest='isVerbose', action="store_true",
+                       help='Set Logger To Verbose', default=False)
     opt_gen.add_option('', '--sparse_bam', dest='sparse_bam', action="store_true",
                        help='Input BAM files are in sparse hdf5 format [off]', default=False)
-    opt_gen.add_option('-p', '--plot', dest='doPlot', action="store_true", help='Plot figures', default=False)
+    opt_gen.add_option('-p', '--plot', dest='doPlot', action="store_true",
+                       help='Plot figures', default=False)
     opt_gen.add_option('-s', '--fn_sample_ratio', dest='fn_sample_ratio', metavar='FILE',
                        help='Sample Ratios in relation to yours',
-                       default=os.path.join(os.path.realpath(__file__).rsplit('/', 1)[:-1][0], 'data',
-                                            'sampleRatios/TCGA_sample_a_ratio_uq.tsv'))
-    # MM: Does not seem to be used anywhere
-    #opt_gen.add_option('-d', '--mask-filter', dest='filt', help='Mask all readcounts below this integer', default='0')
+                       default=os.path.join(os.path.realpath(__file__).rsplit('/', 1)[:-1][0],
+                                            'data', 'sampleRatios/TCGA_sample_a_ratio_uq.tsv'))
+    opt_gen.add_option('-d', '--mask-filter', dest='filt',
+                       help='Mask all readcounts below this integer', default='0')
     opt_gen.add_option('', '--protein-coding-filter_OFF', dest="protein_coding_filter", action="store_false",
                        help="Consider only genes that are protein-coding", default=True)
 
-
     opt_kmer = OptionGroup(parser, 'Options for k-mer counting')
 
-    opt_kmer.add_option('-k', '', dest='k', type='int', help='Length of k-mer for alignmentfree counting [27]',
-                        default=27)
+    opt_kmer.add_option('-k', '', dest='k', type='int',
+                        help='Length of k-mer for alignmentfree counting', default=27)
     opt_kmer.add_option('-R', '--reads_kmer', dest='kmer_thresh', type='float',
-                        help='Required active reads per sample [50000] / if btw 0 and 1 fraction of input reads considered',
+                        help='Required active reads per sample or if in [0, 1] then fraction of input reads considered',
                         default=50000)
-    opt_kmer.add_option('-S', '--step_k', dest='step_k', type='int', help='Step-size for k-mer counting [4]', default=4)
+    opt_kmer.add_option('-S', '--step_k', dest='step_k', type='int',
+                        help='Step-size for k-mer counting', default=4)
 
     parser.add_option_group(sampleinput)
     parser.add_option_group(sampleoutput)
@@ -97,11 +103,12 @@ def parse_options(argv):
     if len(argv) < 2:
         parser.print_help()
         sys.exit(2)
-    if sp.sum(int(options.dir_bam != '-') + int(options.fn_bam != '-') + int(options.fastq_dir != '-')) != 1:
+    if sp.sum(int(options.dir_bam != '-') + int(options.fn_bam != '-')
+              + int(options.dir_cnt != '-') + int(options.dir_fastq != '-')) != 1:
         print "Please specify exactly one type of input file(s) (e.g.: Exon quantification, Bam Files)"
         parser.print_help()
         sys.exit(2)
-    if options.fastq_dir != '-' and options.fn_genome == '-':
+    if options.dir_fastq != '-' and options.fn_genome == '-':
         print >> sys.stderr, 'For usage on fastq files a genome file in fasta needs to be provided via -G/--genome'
         sys.exit(2)
     return options
@@ -131,7 +138,7 @@ def calculateBias(exonTgene, data, exonpos):
 def main():
     ### Parse options
     options = parse_options(sys.argv)
-    # filt = int(options.filt)
+    filt = int(options.filt)
 
     #### set up logger
     logging.basicConfig(filename=options.fn_log, level=0, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -144,7 +151,7 @@ def main():
 
     exonTgene = get_annotation_table(options)
 
-    if options.fastq_dir != '-':
+    if options.dir_fastq != '-':
         if(options.fn_pickle_filt != None and os.path.exists(options.fn_pickle_filt)):
             (kmers1, kmers2) = cPickle.load(open(options.fn_pickle_filt, 'r'))
         elif(os.path.exists('filt_kmers_k%i.pickle' % options.k)):
@@ -153,10 +160,10 @@ def main():
             kmers1, kmers2 = prepare_kmers(options, exonTgene)
             kmers1, kmers2 = clean_kmers(options, kmers1, kmers2)
 
-        fastq_list = glob.glob(os.path.join(options.fastq_dir, '*.fastq')) \
-                     + glob.glob(os.path.join(options.fastq_dir, '*.fastq.gz')) \
-                     + glob.glob(os.path.join(options.fastq_dir, '*.fq')) \
-                     + glob.glob(os.path.join(options.fastq_dir, '*.fq.gz'))
+        fastq_list = glob.glob(os.path.join(options.dir_fastq, '*.fastq')) \
+                     + glob.glob(os.path.join(options.dir_fastq, '*.fastq.gz')) \
+                     + glob.glob(os.path.join(options.dir_fastq, '*.fq')) \
+                     + glob.glob(os.path.join(options.dir_fastq, '*.fq.gz'))
         if options.separate_files:
             header = fastq_list
         else:
@@ -181,6 +188,8 @@ def main():
             exonTable = sp.sort(exonTgene[:, [0, 1]].ravel())
             data = get_counts_from_single_bam(options.fn_bam, exonTable)
             sp.savetxt(options.fn_out + 'counts.tsv', sp.vstack((exonTable, data[::2])).T, delimiter='\t', fmt='%s')
+
+
             sys.exit(0)
         else:
             header = [options.fn_bam]  ### change this TODO
@@ -189,6 +198,9 @@ def main():
             else:
                 data = get_counts_from_multiple_bam([options.fn_bam], exonTgene)  ### REMOVE
             exonpos = exonTgene[:, :2].ravel('C')
+    elif options.dir_cnt != '-':
+        data = get_counts_from_tab_delimited_count_file(options.dir_cnt)
+        exonpos = exonTgene[:, :2].ravel('C')
 
     ### normalize counts by exon length
     logging.info("Normalize counts by exon length")
