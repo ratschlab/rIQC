@@ -129,6 +129,9 @@ def calculateBias(exonTgene, data, exonpos):
                 exonpos[iend][0].split(':')[1].split('-')[0]):
             istart, iend = iend, istart
 
+        #MM TODO this would never work if more than one entry in istart/iend were true
+        assert istart[i] == True
+        assert iend[i] == True
         mycounts[i, :, 0] = data[istart, :]
         mycounts[i, :, 1] = data[iend, :]
     
