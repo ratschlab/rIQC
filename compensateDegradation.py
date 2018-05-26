@@ -202,7 +202,7 @@ def main():
     for i in xrange(mycounts.shape[1]):
         #MM only take genes that have some count
         #MM iOK is a boolean np.ndarray as long as number of genes
-        iOK = sp.union1d(p.where(mycounts[:, i, 0] > 0)[0],
+        iOK = sp.union1d(np.where(mycounts[:, i, 0] > 0)[0],
                          np.where(mycounts[:, i, 1] > 0)[0])
 
         #MM replace 0 with 1 to avoid division by 0

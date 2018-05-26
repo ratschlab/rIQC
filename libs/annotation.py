@@ -361,7 +361,7 @@ def __read_annotation_file(fn, protein_coding_filter, format):
         else:
             temp.extend([gid])
             new_data.append(temp)
-
+    pdb.set_trace()
     new_data = sp.array(new_data)
     s_idx = sp.argsort(new_data[:, 5])
     new_data = new_data[s_idx, :]

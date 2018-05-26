@@ -132,6 +132,8 @@ def calculateBias(exonTgene, data, exonpos):
         mycounts[i, :, 0] = data[istart, :]
         mycounts[i, :, 1] = data[iend, :]
     
+    pdb.set_trace()
+
     return mycounts
 
 
@@ -201,6 +203,8 @@ def main():
     elif options.dir_cnt != '-':
         data = get_counts_from_tab_delimited_count_file(options.dir_cnt)
         exonpos = exonTgene[:, :2].ravel('C')
+
+    pdb.set_trace()
 
     ### normalize counts by exon length
     logging.info("Normalize counts by exon length")
