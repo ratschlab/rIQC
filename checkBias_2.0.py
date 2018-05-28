@@ -144,7 +144,7 @@ def main():
     logging.info("Reading Annotation from file")
 
 
-    if(options.cnt_dir != '-'):
+    if(options.dir_cnt == '-'):
         exon_t_gene = get_annotation_table(options)
 
         if options.dir_fastq != '-':
@@ -198,21 +198,29 @@ def main():
 
     else: #MM options.dir_cnt != '-'
         count_files = 0
-        for file in glob.glob(options.fn_out + "counts*.tsv"):
+	cnt_file = None
+        for cnt_file in glob.glob(options.fn_out + "counts*.tsv"):
             count_files = count_files + 1
-        else:
-            exon_t_gene = sp.loadtxt(file, delimiter='\t', dtype='string')[:, :-2]
+        
+	if(cnt_file != None and count_files > 0):
+            cnt_list = glob.glob(os.path.join(options.dir_cnt, "*counts*.tsv"))
+            header = cnt_list
+            exon_t_gene = sp.loadtxt(cnt_file, delimiter='\t', dtype='string')[:, :-2]
             mycounts = sp.zeros((exon_t_gene.shape[0], count_files, 2))
-        for i in xrange(count_files):
-            mycounts[:, i, :] = sp.loadtxt(options.fn_out + 'counts' + str(i) + '.tsv',
-                                           delimiter='\t', dtype='string')[:, -2:]
+            for i in xrange(count_files):
+                mycounts[:, i, :] = sp.loadtxt(options.fn_out + 'counts' + str(i) + '.tsv', delimiter='\t', dtype='string')[:, -2:]
+        else:
+            print "No count files found in specified directory"
+            sys.exit(2)
+            
 
 
     if options.count_only:
         print "WARNING: Running only exon counts"
+	pdb.set_trace()
         #MM CAVEAT: Order of exon-positions and counts might be switched (strand! --> see fct to get counts)
         for i in xrange(mycounts.shape[1]):
-            exon_table = np.column_stack(exon_t_gene[:, :], mycounts[:, i, :])
+            exon_table = np.column_stack((exon_t_gene[:, :], mycounts[:, i, :]))
             sp.savetxt(options.fn_out + 'counts' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
         sys.exit(0)
 
