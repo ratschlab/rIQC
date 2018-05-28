@@ -198,30 +198,28 @@ def main():
 
     else: #MM options.dir_cnt != '-'
         count_files = 0
-	cnt_file = None
-        for cnt_file in glob.glob(options.fn_out + "counts*.tsv"):
+        cnt_file = None
+        for cnt_file in glob.glob(options.fn_out + "counts_*.npy"):
             count_files = count_files + 1
         
-	if(cnt_file != None and count_files > 0):
-            cnt_list = glob.glob(os.path.join(options.dir_cnt, "*counts*.tsv"))
-            header = cnt_list
-            exon_t_gene = sp.loadtxt(cnt_file, delimiter='\t', dtype='string')[:, :-2]
+        if cnt_file is not None and count_files > 0:
+            header = sp.loadtxt(options.fn_out + "header.tsv", delimiter="\t", dtype="string")
+            exon_t_gene = np.load(cnt_file)[:, :-2]
             mycounts = sp.zeros((exon_t_gene.shape[0], count_files, 2))
             for i in xrange(count_files):
-                mycounts[:, i, :] = sp.loadtxt(options.fn_out + 'counts' + str(i) + '.tsv', delimiter='\t', dtype='string')[:, -2:]
+                mycounts[:, i, :] = np.load(options.fn_out + 'counts_' + str(i) + '.npy')[:, -2:]
         else:
             print "No count files found in specified directory"
             sys.exit(2)
-            
-
 
     if options.count_only:
         print "WARNING: Running only exon counts"
-	pdb.set_trace()
         #MM CAVEAT: Order of exon-positions and counts might be switched (strand! --> see fct to get counts)
+        sp.savetxt(options.fn_out + "header.tsv", header, delimiter="\t", fmt="%s")
         for i in xrange(mycounts.shape[1]):
             exon_table = np.column_stack((exon_t_gene[:, :], mycounts[:, i, :]))
-            sp.savetxt(options.fn_out + 'counts' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
+            np.save(options.fn_out + 'counts_' + str(i) + '.npy', exon_table)
+            sp.savetxt(options.fn_out + 'counts_' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
         sys.exit(0)
 
 

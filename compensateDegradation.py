@@ -35,7 +35,6 @@ def parse_options(argv):
     sampleinput.add_option('', '--separate_files', dest='separate_files', action="store_true",
                            help='Consider all input files individually [off]', default=False)
 
-
     sampleoutput = OptionGroup(parser, 'Output')
 
     sampleoutput.add_option('', '--out_fn', dest='fn_out', metavar='FILE',
@@ -47,15 +46,12 @@ def parse_options(argv):
     sampleoutput.add_option('', '--pickle_filt', dest='fn_pickle_filt', metavar='FILE',
                             help='Pickle file for storing filtered/cleaned kmers', default=None)
 
-
     opt_gen = OptionGroup(parser, 'General Options')
 
     opt_gen.add_option('', '--quant', dest='qmode', metavar='STRING',
                        help='What type of quantification to use [rpkm,raw]', default='raw')
     opt_gen.add_option('', '--pseudocount', dest='doPseudo', action="store_true",
                        help='Add Pseudocounts to ratio', default=False)
-    opt_gen.add_option('', '--count_only', dest='count_only', action="store_true",
-                       help='Only do counting on given input [off]', default=False)
     opt_gen.add_option('', '--bins', dest='nmb_bins', type='int',
                        help='Number of bins for different gene lengths', default=10)
 
@@ -118,19 +114,18 @@ def __get_counts_of_marginal_exons(exon_t_gene, data):
     return mycounts
 
 
-
 def main():
     # Parse options
     options = parse_options(sys.argv)
 
-    #### set up logger
+    # set up logger
     logging.basicConfig(filename=options.fn_log, level=0, format='%(asctime)s - %(levelname)s - %(message)s')
     log = logging.getLogger()
     if options.isVerbose:
         consoleHandler = logging.StreamHandler()
         log.addHandler(consoleHandler)
 
-    ### Read annotation from file
+    # Read annotation from file
     logging.info("Reading Annotation from file")
 
     # MM type(exon_t_gene) is np.ndarray
@@ -168,19 +163,10 @@ def main():
             bam_list = glob.glob(os.path.join(options.dir_bam, '*.bam'))
             data = get_counts_from_multiple_bam(bam_list, exon_t_gene)
     elif options.fn_bam != '-':
-        if options.count_only:
-            print "WARNING: Running only gene counts"
-            exonTable = sp.sort(exon_t_gene[:, [0, 1]].ravel())
-            data = get_counts_from_single_bam(options.fn_bam, exonTable)
-            sp.savetxt(options.fn_out + 'counts.tsv', sp.vstack((exonTable, data[::2])).T, delimiter='\t', fmt='%s')
-            sys.exit(0)
+        if options.sparse_bam:
+            data = get_counts_from_multiple_bam_sparse([options.fn_bam], exon_t_gene)
         else:
-            if options.sparse_bam:
-                data = get_counts_from_multiple_bam_sparse([options.fn_bam], exon_t_gene)
-            else:
-                data = get_counts_from_multiple_bam([options.fn_bam], exon_t_gene)
-    elif options.dir_cnt != '-':
-        data = get_counts_from_tab_delimited_count_file(options.dir_cnt)
+            data = get_counts_from_multiple_bam([options.fn_bam], exon_t_gene)
 
 
     ### normalize counts by exon length
@@ -199,8 +185,8 @@ def main():
     upperLengthBound = np.ceil(np.amax(exonLengths))
 
     scale = sp.zeros((mycounts.shape[0], mycounts.shape[1]))
-    #MM average scales with #genes that contribute
-    avg_scale = sp.zeros((mycounts.shape[1], options.nmb_bins, 2))
+    #MM average scales with interval and #genes that contribute
+    avg_scale = sp.zeros((mycounts.shape[1], options.nmb_bins, 3))
 
     #MM for every file that was read in
     for i in xrange(mycounts.shape[1]):
@@ -218,28 +204,22 @@ def main():
         scale[iOK, i] = (mycounts[iOK, i, 1] / mycounts[iOK, i, 0])
 
         for j in range(options.nmb_bins):
-            idx_l = sp.intersect1d(np.where(upperLengthBound / options.nmb_bins * j < exonLengths)[0],
-                                   np.where(exonLengths <= upperLengthBound / options.nmb_bins * (j + 1))[0])
+            low_b = upperLengthBound / options.nmb_bins * j
+            up_b = upperLengthBound / options.nmb_bins * (j + 1)
+            idx_l = sp.intersect1d(np.where(low_b < exonLengths)[0], np.where(exonLengths <= up_b)[0])
 
             # indices of genes that have right length and a scale factor
             comb_idx = sp.intersect1d(iOK, idx_l)
 
-            if(comb_idx.shape[0] != 0):
+            avg_scale[i, j, 1] = str(low_b) + "-" + str(up_b)
+            if comb_idx.shape[0] != 0:
                 avg_scale[i, j, 0] = sp.sum(scale[comb_idx, i]) / comb_idx.shape[0]
-                avg_scale[i, j, 1] = comb_idx.shape[0]
+                avg_scale[i, j, 2] = comb_idx.shape[0]
             else:
                 avg_scale[i, j, 0] = 0
-                avg_scale[i, j, 1] = comb_idx.shape[0]
+                avg_scale[i, j, 2] = comb_idx.shape[0]
 
-
-    logging.info("The scale for each file: ")
-    logging.info(avg_scale)
-
-
-
-
-
-
+        sp.savetxt(options.fn_out + "_scalingFactors_" + str(i) + ".tsv", avg_scale[i, :, :], delimiter="\t", fmt="%s")
 
 
 if __name__ == "__main__":
