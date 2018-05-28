@@ -9,18 +9,14 @@ import glob
 import fnmatch
 import cPickle
 from optparse import OptionParser, OptionGroup
+import logging
 
 from libs.annotation import *
 from libs.viz import *
 from libs.bam import *
 from libs.bam_sparse import *
 from libs.kmer import *
-from libs.count import *
 
-import logging
-
-
-### may not be necessary
 
 def parse_options(argv):
     parser = OptionParser()
@@ -67,31 +63,31 @@ def parse_options(argv):
                        help='Only do counting on given input [off]', default=False)
     opt_gen.add_option('', '--length', dest='length', metavar='STRING',
                        help='Length filter [uq,mq,lq]', default='uq')
-    opt_gen.add_option('-g', '--log', dest='fn_log', metavar='FILE',
+    opt_gen.add_option('', '--log', dest='fn_log', metavar='FILE',
                        help='Log file', default='out.log')
-    opt_gen.add_option('-v', '--verbose', dest='isVerbose', action="store_true",
+    opt_gen.add_option('', '--verbose', dest='isVerbose', action="store_true",
                        help='Set Logger To Verbose', default=False)
     opt_gen.add_option('', '--sparse_bam', dest='sparse_bam', action="store_true",
                        help='Input BAM files are in sparse hdf5 format [off]', default=False)
-    opt_gen.add_option('-p', '--plot', dest='doPlot', action="store_true",
+    opt_gen.add_option('', '--plot', dest='doPlot', action="store_true",
                        help='Plot figures', default=False)
-    opt_gen.add_option('-s', '--fn_sample_ratio', dest='fn_sample_ratio', metavar='FILE',
+    opt_gen.add_option('', '--fn_sample_ratio', dest='fn_sample_ratio', metavar='FILE',
                        help='Sample Ratios in relation to yours',
                        default=os.path.join(os.path.realpath(__file__).rsplit('/', 1)[:-1][0],
                                             'data', 'sampleRatios/TCGA_sample_a_ratio_uq.tsv'))
-    opt_gen.add_option('-d', '--mask-filter', dest='filt',
+    opt_gen.add_option('', '--mask-filter', dest='filt',
                        help='Mask all readcounts below this integer', default='0')
     opt_gen.add_option('', '--protein-coding-filter_OFF', dest="protein_coding_filter", action="store_false",
                        help="Consider only genes that are protein-coding", default=True)
 
     opt_kmer = OptionGroup(parser, 'Options for k-mer counting')
 
-    opt_kmer.add_option('-k', '', dest='k', type='int',
+    opt_kmer.add_option('', '--kmer_length', dest='k', type='int',
                         help='Length of k-mer for alignmentfree counting', default=27)
-    opt_kmer.add_option('-R', '--reads_kmer', dest='kmer_thresh', type='float',
+    opt_kmer.add_option('', '--reads_kmer', dest='kmer_thresh', type='float',
                         help='Required active reads per sample or if in [0, 1] then fraction of input reads considered',
                         default=50000)
-    opt_kmer.add_option('-S', '--step_k', dest='step_k', type='int',
+    opt_kmer.add_option('', '--step_k', dest='step_k', type='int',
                         help='Step-size for k-mer counting', default=4)
 
     parser.add_option_group(sampleinput)
@@ -114,28 +110,21 @@ def parse_options(argv):
     return options
 
 
-def calculateBias(exonTgene, data, exonpos):
-    mycounts = sp.zeros((exonTgene.shape[0], data.shape[1], 2))
+def __get_counts_from_marginal_exons(exon_t_gene, data):
+    mycounts = sp.zeros((exon_t_gene.shape[0], data.shape[1], 2))
 
-    for i, rec in enumerate(exonTgene):
+    for i, rec in enumerate(exon_t_gene):
 
-        istart = exonpos == rec[0]
-        iend = exonpos == rec[1]
-        if sp.sum(istart) == 0:
-            continue
-        if sp.sum(iend) == 0:
-            continue
-        if exonpos[istart][0].split(':')[-1] == '-' and int(exonpos[istart][0].split(':')[1].split('-')[0]) < int(
-                exonpos[iend][0].split(':')[1].split('-')[0]):
+        istart = i*2
+        iend = i*2 + 1
+
+        if rec[0].split(':')[-1] == '-' and \
+                int(rec[0].split(':')[1].split('-')[0]) \
+                < int(rec[1].split(':')[1].split('-')[0]):
             istart, iend = iend, istart
 
-        #MM TODO this would never work if more than one entry in istart/iend were true
-        assert istart[i] == True
-        assert iend[i] == True
         mycounts[i, :, 0] = data[istart, :]
         mycounts[i, :, 1] = data[iend, :]
-    
-    pdb.set_trace()
 
     return mycounts
 
@@ -154,98 +143,96 @@ def main():
     ### Read annotation from file
     logging.info("Reading Annotation from file")
 
-    exonTgene = get_annotation_table(options)
 
-    if options.dir_fastq != '-':
-        if(options.fn_pickle_filt != None and os.path.exists(options.fn_pickle_filt)):
-            (kmers1, kmers2) = cPickle.load(open(options.fn_pickle_filt, 'r'))
-        elif(os.path.exists('filt_kmers_k%i.pickle' % options.k)):
-            (kmers1, kmers2) = cPickle.load(open(('filt_kmers_k%i.pickle' % options.k), 'r'))
-        else:
-            kmers1, kmers2 = prepare_kmers(options, exonTgene)
-            kmers1, kmers2 = clean_kmers(options, kmers1, kmers2)
+    if(options.cnt_dir != '-'):
+        exon_t_gene = get_annotation_table(options)
 
-        fastq_list = glob.glob(os.path.join(options.dir_fastq, '*.fastq')) \
-                     + glob.glob(os.path.join(options.dir_fastq, '*.fastq.gz')) \
-                     + glob.glob(os.path.join(options.dir_fastq, '*.fq')) \
-                     + glob.glob(os.path.join(options.dir_fastq, '*.fq.gz'))
-        if options.separate_files:
-            header = fastq_list
-        else:
-            header = ','.join(fastq_list)
+        if options.dir_fastq != '-':
+            if(options.fn_pickle_filt != None and os.path.exists(options.fn_pickle_filt)):
+                (kmers1, kmers2) = cPickle.load(open(options.fn_pickle_filt, 'r'))
+            elif(os.path.exists('filt_kmers_k%i.pickle' % options.k)):
+                (kmers1, kmers2) = cPickle.load(open(('filt_kmers_k%i.pickle' % options.k), 'r'))
+            else:
+                kmers1, kmers2 = prepare_kmers(options, exon_t_gene)
+                kmers1, kmers2 = clean_kmers(options, kmers1, kmers2)
 
-        data = get_counts_from_multiple_fastq(fastq_list, kmers1, kmers2, options)
-        exonpos = exonTgene[:, :2].ravel('C')
+            fastq_list = glob.glob(os.path.join(options.dir_fastq, '*.fastq')) \
+                         + glob.glob(os.path.join(options.dir_fastq, '*.fastq.gz')) \
+                         + glob.glob(os.path.join(options.dir_fastq, '*.fq')) \
+                         + glob.glob(os.path.join(options.dir_fastq, '*.fq.gz'))
+            if options.separate_files:
+                header = fastq_list
+            else:
+                header = ','.join(fastq_list)
 
-    elif options.dir_bam != '-':
-        if options.sparse_bam:
-            bam_list = glob.glob(os.path.join(options.dir_bam, '*.hdf5'))
-            header = bam_list  ### change this TODO
-            data = get_counts_from_multiple_bam_sparse(bam_list, exonTgene)  ### REMOVE
-        else:
-            bam_list = glob.glob(os.path.join(options.dir_bam, '*.bam'))
-            header = bam_list  ### change this TODO
-            data = get_counts_from_multiple_bam(bam_list, exonTgene)  ### REMOVE
-        exonpos = exonTgene[:, :2].ravel('C')
-    elif options.fn_bam != '-':
-        if options.count_only:
-            print "WARNING: Running only gene counts"
-            exonTable = sp.sort(exonTgene[:, [0, 1]].ravel())
-            data = get_counts_from_single_bam(options.fn_bam, exonTable)
-            sp.savetxt(options.fn_out + 'counts.tsv', sp.vstack((exonTable, data[::2])).T, delimiter='\t', fmt='%s')
+            data = get_counts_from_multiple_fastq(fastq_list, kmers1, kmers2, options)
 
-
-            sys.exit(0)
-        else:
+        elif options.dir_bam != '-':
+            if options.sparse_bam:
+                bam_list = glob.glob(os.path.join(options.dir_bam, '*.hdf5'))
+                header = bam_list  ### change this TODO
+                data = get_counts_from_multiple_bam_sparse(bam_list, exon_t_gene)  ### REMOVE
+            else:
+                bam_list = glob.glob(os.path.join(options.dir_bam, '*.bam'))
+                header = bam_list  ### change this TODO
+                data = get_counts_from_multiple_bam(bam_list, exon_t_gene)  ### REMOVE
+        elif options.fn_bam != '-':
             header = [options.fn_bam]  ### change this TODO
             if options.sparse_bam:
-                data = get_counts_from_multiple_bam_sparse([options.fn_bam], exonTgene)  ### REMOVE
+                data = get_counts_from_multiple_bam_sparse([options.fn_bam], exon_t_gene)  ### REMOVE
             else:
-                data = get_counts_from_multiple_bam([options.fn_bam], exonTgene)  ### REMOVE
-            exonpos = exonTgene[:, :2].ravel('C')
-    elif options.dir_cnt != '-':
-        data = get_counts_from_tab_delimited_count_file(options.dir_cnt)
-        exonpos = exonTgene[:, :2].ravel('C')
+                data = get_counts_from_multiple_bam([options.fn_bam], exon_t_gene)  ### REMOVE
 
-    pdb.set_trace()
 
-    ### normalize counts by exon length
-    logging.info("Normalize counts by exon length")
-    if (options.qmode == 'raw'):
-        exonl = sp.array([int(x.split(':')[1].split('-')[1]) - int(x.split(':')[1].split('-')[0]) + 1 for x in exonpos],
-                         dtype='float') / 1000.
-        data /= sp.tile(exonl[:, sp.newaxis], data.shape[1])
+        ### normalize counts by exon length
+        logging.info("Normalize counts by exon length")
+        if options.qmode == 'raw':
+            exonl = sp.array([int(x.split(':')[1].split('-')[1])
+                            - int(x.split(':')[1].split('-')[0]) + 1 for x in exon_t_gene[:, :2].ravel('C')],
+                            dtype='float') / 1000.
+            data /= sp.tile(exonl[:, sp.newaxis], data.shape[1])
 
-    ### Calculate 3'/5' Bias
-    logging.info("Calculate Bias")
-    mycounts = calculateBias(exonTgene, data, exonpos)
+        ### Calculate 3'/5' Bias
+        logging.info("Get counts from marginal exons")
+        mycounts = __get_counts_from_marginal_exons(exon_t_gene, data)
 
-    logging.info("Find Median")
+    else: #MM options.dir_cnt != '-'
+        count_files = 0
+        for file in glob.glob(options.fn_out + "counts*.tsv"):
+            count_files = count_files + 1
+        else:
+            exon_t_gene = sp.loadtxt(file, delimiter='\t', dtype='string')[:, :-2]
+            mycounts = sp.zeros((exon_t_gene.shape[0], count_files, 2))
+        for i in xrange(count_files):
+            mycounts[:, i, :] = sp.loadtxt(options.fn_out + 'counts' + str(i) + '.tsv',
+                                           delimiter='\t', dtype='string')[:, -2:]
+
+
+    if options.count_only:
+        print "WARNING: Running only exon counts"
+        #MM CAVEAT: Order of exon-positions and counts might be switched (strand! --> see fct to get counts)
+        for i in xrange(mycounts.shape[1]):
+            exon_table = np.column_stack(exon_t_gene[:, :], mycounts[:, i, :])
+            sp.savetxt(options.fn_out + 'counts' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
+        sys.exit(0)
+
+
+    logging.info("Calculate Bias and Find Median")
     vals = []
     for i in xrange(mycounts.shape[1]):
-	if options.doPseudo:
-            ### AK: I had to filter for counts with some signal, otherwise the median is always 1.0 ...
-            iOK = ((mycounts[:, i, 1] > 0) | (mycounts[:, i, 0] > 0))
-            ratio = sp.percentile((mycounts[iOK, i, 1] + 1) / (mycounts[iOK, i, 0] + 1), 50)
-        
-	else:
-            ### AK: This version allows for the ocurrence of infs in some cases where there should be nan's
-            # iOK = ~(sp.isnan(mycounts[:,i,0])) & ~(sp.isnan(mycounts[:,i,1]))
-            # tmp = ((mycounts[:,i,1] )[iOK]) / ((mycounts[:,i,0] )[iOK] )
-            # vals.append(sp.percentile(tmp[~sp.isnan(tmp)],50))
+        if options.doPseudo:
+            #AK: I had to filter for counts with some signal, otherwise the median is always 1.0
+            i_ok = ((mycounts[:, i, 1] > 0) | (mycounts[:, i, 0] > 0))
+            ratio = sp.percentile((mycounts[i_ok, i, 1] + 1) / (mycounts[i_ok, i, 0] + 1), 50)
+        else:
+            i_ok = ((mycounts[:, i, 1] > 0) & (mycounts[:, i, 0] > 0))
+            ratio = sp.percentile(mycounts[i_ok, i, 1] / mycounts[i_ok, i, 0], 50)
 
-            ### AK: This is my new version
-            iOK = ((mycounts[:, i, 1] > 0) & (mycounts[:, i, 0] > 0))
-            # iOK = ~(sp.isnan(mycounts[:, i, 0])) & ~(sp.isnan(mycounts[:, i, 1])) & (mycounts[:, i, 0] > 0)
-            ratio = sp.percentile(mycounts[iOK, i, 1] / mycounts[iOK, i, 0], 50)
         assert sp.sum(sp.isnan(ratio)) + sp.sum(sp.isinf(ratio)) == 0
         vals.append(ratio)
 
-
-
     vals = sp.array(vals)
 
-    sidx = sp.argsort(vals)
     iqr = ((sp.percentile(vals, 75) - sp.percentile(vals, 25)) * 1.5)
 
     logging.info("Tukey Filter is estimated to be %f" % (iqr + sp.percentile(vals, 75)))
@@ -253,21 +240,20 @@ def main():
         print "Tukey Filter is estimated to be %f" % (iqr + sp.percentile(vals, 75))
         print "Tukey Filter is estimated to be %f" % (sp.percentile(vals, 25) - iqr)
 
-
     sp.savetxt('%s_sample_a_ratio_%s.tsv' % (options.fn_out, options.length),
                sp.vstack((header, vals.astype('string'))).T, delimiter='\t', fmt='%s')
 
     if options.doPlot:
         logging.info("Plot all samples")
 
-        baselinedata = sp.loadtxt(options.fn_sample_ratio, delimiter='\t', dtype='string')
-        baselinedata = baselinedata[:, 1].astype('float')
+        baseline_data = sp.loadtxt(options.fn_sample_ratio, delimiter='\t', dtype='string')
+        baseline_data = baseline_data[:, 1].astype('float')
 
-        basePval = sp.hstack((baselinedata, vals))
-        midx = sp.hstack((sp.ones(baselinedata.shape[0]), sp.zeros(vals.shape[0]))).astype('bool')
-        plotBias(basePval, '%s_bias_sorted_vline_%s.png' % (options.fn_out, options.length), midx)
-        midx = sp.hstack((sp.ones(baselinedata.shape[0]), sp.zeros(vals.shape[0]))).astype('bool')
-        plotBias(basePval, '%s_bias_sorted_vline_log_%s.png' % (options.fn_out, options.length), midx, logScale=True)
+        base_p_val = sp.hstack((baseline_data, vals))
+        midx = sp.hstack((sp.ones(baseline_data.shape[0]), sp.zeros(vals.shape[0]))).astype('bool')
+        plotBias(base_p_val, '%s_bias_sorted_vline_%s.png' % (options.fn_out, options.length), midx)
+        midx = sp.hstack((sp.ones(baseline_data.shape[0]), sp.zeros(vals.shape[0]))).astype('bool')
+        plotBias(base_p_val, '%s_bias_sorted_vline_log_%s.png' % (options.fn_out, options.length), midx, logScale=True)
 
 
 if __name__ == "__main__":

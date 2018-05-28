@@ -16,30 +16,31 @@ def parse_options(argv):
 
     sampleinput = OptionGroup(parser, 'Input')
 
-    sampleinput.add_option('', '--bam_dir', dest='dir_bam', metavar='FILE', help='Directory of bam files',
-                           default='-')
-    sampleinput.add_option('', '--fastq_dir', dest='fastq_dir', metavar='FILE', help='Directory of fastq files',
-                           default='-')
-    sampleinput.add_option('', '--fn_bam', dest='fn_bam', metavar='FIlE', help='Specifies single bam file',
-                           default='-')
+    sampleinput.add_option('', '--bam_dir', dest='dir_bam', metavar='FILE',
+                           help='Directory of bam files', default='-')
+    sampleinput.add_option('', '--fastq_dir', dest='dir_fastq', metavar='FILE',
+                           help='Directory of fastq files', default='-')
+    sampleinput.add_option('', '--bam_fn', dest='fn_bam', metavar='FIlE',
+                           help='Specifies single bam file', default='-')
+    sampleinput.add_option('', '--cnt_dir', dest='dir_cnt', metavar='FILE',
+                           help='Directory of pre-produced tab delimited count files', default='-')
 
-    sampleinput.add_option('', '--fn_anno', dest='fn_anno', metavar='FILE', help='Annotation', default='-')
+    sampleinput.add_option('', '--anno_fn', dest='fn_anno', metavar='FILE',
+                           help='Annotation', default='-')
 
-    sampleinput.add_option('', '--genome', dest='fn_genome', metavar='FILE', help='Path to genome file in fasta',
-                           default='-')
-
-
-    sampleinput.add_option('-i', '--genelist', dest='fn_genes', metavar='FILE', help='file with genenames to use',
-                           default='-')
+    sampleinput.add_option('', '--genome', dest='fn_genome', metavar='FILE',
+                           help='Path to genome file in fasta', default='-')
+    sampleinput.add_option('', '--genelist', dest='fn_genes', metavar='FILE',
+                           help='file with genenames to use', default='-')
     sampleinput.add_option('', '--separate_files', dest='separate_files', action="store_true",
                            help='Consider all input files individually [off]', default=False)
 
 
     sampleoutput = OptionGroup(parser, 'Output')
 
-    sampleoutput.add_option('', '--fn_out', dest='fn_out', metavar='FILE',
+    sampleoutput.add_option('', '--out_fn', dest='fn_out', metavar='FILE',
                             help='prefix for output', default='out')
-    sampleoutput.add_option('', '--fn_anno_tmp', dest='fn_anno_tmp', metavar='FILE',
+    sampleoutput.add_option('', '--anno_tmp_fn', dest='fn_anno_tmp', metavar='FILE',
                             help='Temp file for storing anno info', default='anno.tmp')
     sampleoutput.add_option('', '--pickle_all', dest='fn_pickle_all', metavar='FILE',
                             help='Pickle file for storing all kmers', default=None)
@@ -51,32 +52,32 @@ def parse_options(argv):
 
     opt_gen.add_option('', '--quant', dest='qmode', metavar='STRING',
                        help='What type of quantification to use [rpkm,raw]', default='raw')
-
+    opt_gen.add_option('', '--pseudocount', dest='doPseudo', action="store_true",
+                       help='Add Pseudocounts to ratio', default=False)
     opt_gen.add_option('', '--count_only', dest='count_only', action="store_true",
                        help='Only do counting on given input [off]', default=False)
-
     opt_gen.add_option('', '--bins', dest='nmb_bins', type='int',
                        help='Number of bins for different gene lengths', default=10)
 
-    opt_gen.add_option('', '--log', dest='fn_log', metavar='FILE', help='Log file', default='out.log')
-    opt_gen.add_option('', '--verbose', dest='isVerbose', action="store_true", help='Set Logger To Verbose',
-                       default=False)
-
+    opt_gen.add_option('', '--log', dest='fn_log', metavar='FILE',
+                       help='Log file', default='out.log')
+    opt_gen.add_option('', '--verbose', dest='isVerbose', action="store_true",
+                       help='Set Logger To Verbose', default=False)
     opt_gen.add_option('', '--sparse_bam', dest='sparse_bam', action="store_true",
                        help='Input BAM files are in sparse hdf5 format [off]', default=False)
 
     opt_gen.add_option('', '--protein-coding-filter_OFF', dest="protein_coding_filter", action="store_false",
                        help="Consider only genes that are protein-coding", default=True)
 
-
     opt_kmer = OptionGroup(parser, 'Options for k-mer counting')
 
-    opt_kmer.add_option('', '--kmer_length', dest='k', type='int', help='Length of k-mer for alignmentfree counting [27]',
-                        default=27)
+    opt_kmer.add_option('', '--kmer_length', dest='k', type='int',
+                        help='Length of k-mer for alignmentfree counting', default=27)
     opt_kmer.add_option('', '--reads_kmer', dest='kmer_thresh', type='float',
-                        help='Required active reads per sample [50000] / if btw 0 and 1 fraction of input reads considered',
+                        help='Required active reads per sample or if in [0, 1] then fraction of input reads considered',
                         default=50000)
-    opt_kmer.add_option('', '--step_k', dest='step_k', type='int', help='Step-size for k-mer counting [4]', default=4)
+    opt_kmer.add_option('', '--step_k', dest='step_k', type='int',
+                        help='Step-size for k-mer counting', default=4)
 
     parser.add_option_group(sampleinput)
     parser.add_option_group(sampleoutput)
@@ -87,7 +88,8 @@ def parse_options(argv):
     if len(argv) < 2:
         parser.print_help()
         sys.exit(2)
-    if sp.sum(int(options.dir_bam != '-') + int(options.fn_bam != '-') + int(options.fastq_dir != '-')) != 1:
+    if sp.sum(int(options.dir_bam != '-') + int(options.fn_bam != '-')
+              + int(options.dir_cnt != '-') + int(options.fastq_dir != '-')) != 1:
         print "Please specify exactly one type of input file(s) (e.g.: Exon quantification, Bam Files)"
         parser.print_help()
         sys.exit(2)
@@ -95,6 +97,25 @@ def parse_options(argv):
         print >> sys.stderr, 'For usage on fastq files a genome file in fasta needs to be provided via -G/--genome'
         sys.exit(2)
     return options
+
+
+def __get_counts_of_marginal_exons(exon_t_gene, data):
+    mycounts = sp.zeros((exon_t_gene.shape[0], data.shape[1], 2))
+
+    for i, rec in enumerate(exon_t_gene):
+
+        istart = i * 2
+        iend = i * 2 + 1
+
+        if rec[0].split(':')[-1] == '-' and \
+                int(rec[0].split(':')[1].split('-')[0]) \
+                < int(rec[1].split(':')[1].split('-')[0]):
+            istart, iend = iend, istart
+
+        mycounts[i, :, 0] = data[istart, :]
+        mycounts[i, :, 1] = data[iend, :]
+
+    return mycounts
 
 
 
@@ -112,10 +133,10 @@ def main():
     ### Read annotation from file
     logging.info("Reading Annotation from file")
 
-    # MM type(exonTgene) is np.ndarray
+    # MM type(exon_t_gene) is np.ndarray
     # MM rows:_genes
     # MM 6 columns: first_constitutive_exon last_constitutive_exon chromosome strand distance(basepairs) genname
-    exonTgene = get_annotation_table(options, False) #no filtering for certain gene length (lengthFilter=False)
+    exon_t_gene = get_annotation_table(options, False) #no filtering for certain gene length (lengthFilter=False)
 
     if options.fastq_dir != '-':
         if(options.fn_pickle_filt != None and os.path.exists(options.fn_pickle_filt)):
@@ -126,7 +147,7 @@ def main():
             # MM type(kmers1) is list
             # MM kmers1 contains kmers in first consecutive exon
             # MM kmers2 contains kmers in last consecutive exon
-            kmers1, kmers2 = prepare_kmers(options, exonTgene)
+            kmers1, kmers2 = prepare_kmers(options, exon_t_gene)
             kmers1, kmers2 = clean_kmers(options, kmers1, kmers2)
 
         fastq_list = glob.glob(os.path.join(options.fastq_dir, '*.fastq')) \
@@ -138,60 +159,43 @@ def main():
         # MM data contains all counts for first and last exon of each gene
         # MM in case of multiple files in directory: each column contains counts for one file
         data = get_counts_from_multiple_fastq(fastq_list, kmers1, kmers2, options)
-        # MM exonpos is np.ndarray
-        # MM exonpos contains chr-position-strand information for first and last exon of each gene
-        exonpos = exonTgene[:, :2].ravel('C')
 
     elif options.dir_bam != '-':
         if options.sparse_bam:
             bam_list = glob.glob(os.path.join(options.dir_bam, '*.hdf5'))
-            data = get_counts_from_multiple_bam_sparse(bam_list, exonTgene)
+            data = get_counts_from_multiple_bam_sparse(bam_list, exon_t_gene)
         else:
             bam_list = glob.glob(os.path.join(options.dir_bam, '*.bam'))
-            data = get_counts_from_multiple_bam(bam_list, exonTgene)
-        exonpos = exonTgene[:, :2].ravel('C')
+            data = get_counts_from_multiple_bam(bam_list, exon_t_gene)
     elif options.fn_bam != '-':
         if options.count_only:
             print "WARNING: Running only gene counts"
-            exonTable = sp.sort(exonTgene[:, [0, 1]].ravel())
+            exonTable = sp.sort(exon_t_gene[:, [0, 1]].ravel())
             data = get_counts_from_single_bam(options.fn_bam, exonTable)
             sp.savetxt(options.fn_out + 'counts.tsv', sp.vstack((exonTable, data[::2])).T, delimiter='\t', fmt='%s')
             sys.exit(0)
         else:
             if options.sparse_bam:
-                data = get_counts_from_multiple_bam_sparse([options.fn_bam], exonTgene)
+                data = get_counts_from_multiple_bam_sparse([options.fn_bam], exon_t_gene)
             else:
-                data = get_counts_from_multiple_bam([options.fn_bam], exonTgene)
-            exonpos = exonTgene[:, :2].ravel('C')
+                data = get_counts_from_multiple_bam([options.fn_bam], exon_t_gene)
+    elif options.dir_cnt != '-':
+        data = get_counts_from_tab_delimited_count_file(options.dir_cnt)
+
 
     ### normalize counts by exon length
     logging.info("Normalize counts by exon length")
     if (options.qmode == 'raw'):
-        exonl = sp.array([int(x.split(':')[1].split('-')[1]) - int(x.split(':')[1].split('-')[0]) + 1 for x in exonpos],
+        exonl = sp.array([int(x.split(':')[1].split('-')[1]) -
+                          int(x.split(':')[1].split('-')[0]) + 1 for x in exon_t_gene[:, :2].ravel('C')],
                          dtype='float') / 1000.
         data /= sp.tile(exonl[:, sp.newaxis], data.shape[1])
 
     # get counts from both ends
-    mycounts = sp.zeros((exonTgene.shape[0], data.shape[1], 2))
-    for i, rec in enumerate(exonTgene):
-
-        ##MM istart is a boolean np.ndarray
-        istart = exonpos == rec[0]
-        iend = exonpos == rec[1]
-        if sp.sum(istart) == 0:
-            continue
-        if sp.sum(iend) == 0:
-           continue
-        if exonpos[istart][0].split(':')[-1] == '-' \
-                and int(exonpos[istart][0].split(':')[1].split('-')[0]) < int(exonpos[iend][0].split(':')[1].split('-')[0]):
-            istart, iend = iend, istart
-
-        # MM mycounts is np.ndarray
-        mycounts[i, :, 0] = data[istart, :]
-        mycounts[i, :, 1] = data[iend, :]
+    mycounts = __get_counts_of_marginal_exons(exon_t_gene, data)
 
     #MM for binning
-    exonLengths = exonTgene[:, 4].astype(float)
+    exonLengths = exon_t_gene[:, 4].astype(float)
     upperLengthBound = np.ceil(np.amax(exonLengths))
 
     scale = sp.zeros((mycounts.shape[0], mycounts.shape[1]))
@@ -206,10 +210,11 @@ def main():
                          np.where(mycounts[:, i, 1] > 0)[0])
 
         #MM replace 0 with 1 to avoid division by 0
-        mycounts[np.where(mycounts[:, i, 0] == 0)[0], i, 0] = 1
+        i_avoid0 = np.where(mycounts[:, i, 0] == 0)[0]
+        mycounts[i_avoid0, i, 0] = 1
+        mycounts[i_avoid0, i, 1] = mycounts[i_avoid0, i, 1] + 1
 
         #MM scale-entrys stay 0 if they are not in iOK
-        #MM to avoid division by zero we take max(count, 1)
         scale[iOK, i] = (mycounts[iOK, i, 1] / mycounts[iOK, i, 0])
 
         for j in range(options.nmb_bins):
