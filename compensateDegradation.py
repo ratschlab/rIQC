@@ -186,7 +186,7 @@ def main():
 
     scale = sp.zeros((mycounts.shape[0], mycounts.shape[1]))
     #MM average scales with interval and #genes that contribute
-    avg_scale = sp.zeros((mycounts.shape[1], options.nmb_bins, 3))
+    avg_scale = sp.zeros((mycounts.shape[1], options.nmb_bins, 4))
 
     #MM for every file that was read in
     for i in xrange(mycounts.shape[1]):
@@ -211,15 +211,17 @@ def main():
             # indices of genes that have right length and a scale factor
             comb_idx = sp.intersect1d(iOK, idx_l)
 
-            avg_scale[i, j, 1] = str(low_b) + "-" + str(up_b)
             if comb_idx.shape[0] != 0:
                 avg_scale[i, j, 0] = sp.sum(scale[comb_idx, i]) / comb_idx.shape[0]
-                avg_scale[i, j, 2] = comb_idx.shape[0]
+                avg_scale[i, j, 1] = comb_idx.shape[0]
             else:
                 avg_scale[i, j, 0] = 0
-                avg_scale[i, j, 2] = comb_idx.shape[0]
+                avg_scale[i, j, 1] = comb_idx.shape[0]
 
-        sp.savetxt(options.fn_out + "_scalingFactors_" + str(i) + ".tsv", avg_scale[i, :, :], delimiter="\t", fmt="%s")
+        header = np.array([['scaling_factor_for_genes_with_length', 'number_of_genes_with_length', 'length_lower_bound', 'length_upper_bound']])
+        assert header.shape[1] == avg_scale.shape[2]
+        sp.savetxt(options.fn_out + "_scalingFactors_" + str(i) + ".tsv", np.concatenate((header, avg_scale)), delimiter="\ŧ", fmt="%s")
+        np.save(options.fn_out + "_scalingFactors_" + str(i) + ".npy", avg_scale)
 
 
 if __name__ == "__main__":
