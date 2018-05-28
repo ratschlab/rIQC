@@ -125,16 +125,25 @@ def calculateBias(exonTgene, data, exonpos):
             continue
         if sp.sum(iend) == 0:
             continue
-        if exonpos[istart][0].split(':')[-1] == '-' and int(exonpos[istart][0].split(':')[1].split('-')[0]) < int(
+        if exonpos[istart][0].split(':')[-1] == '-' and \
+             int(exonpos[istart][0].split(':')[1].split('-')[0]) < int(
                 exonpos[iend][0].split(':')[1].split('-')[0]):
             istart, iend = iend, istart
 
         #MM TODO this would never work if more than one entry in istart/iend were true
-        assert istart[i] == True
-        assert iend[i] == True
+	if (data[istart, :] != data[i*2, :]):
+          pdb.set_trace() 
+	if(data[iend, :] != data[i*2+1, :]):
+          pdb.set_trace()
+        if(rec[0] != exonpos[istart][0]):
+          print rec[0]
+          print exonpos[istart][0]
+        if(exonpos[iend][0] != rec[1]):
+          print rec[1]
+          print exonpos[iend][0]
         mycounts[i, :, 0] = data[istart, :]
         mycounts[i, :, 1] = data[iend, :]
-    
+	
     pdb.set_trace()
 
     return mycounts
