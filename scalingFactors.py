@@ -234,8 +234,8 @@ def main():
 
         header = np.array([['scaling_factor_for_genes_with_length', 'number_of_genes_with_length', 'length_lower_bound', 'length_upper_bound']])
         assert header.shape[1] == avg_scale.shape[2]
-        sp.savetxt(options.fn_out + "_scalingFactors_" + str(i) + ".tsv", np.concatenate((header, avg_scale)), delimiter="\ŧ", fmt="%s")
-        np.save(options.fn_out + "_scalingFactors_" + str(i) + ".npy", avg_scale)
+        sp.savetxt(options.fn_out + "_scalingFactors_" + str(i) + ".tsv", np.concatenate((header, avg_scale[i, :, :])), delimiter="\t", fmt="%s")
+        np.save(options.fn_out + "_scalingFactors_" + str(i) + ".npy", avg_scale[i, :, :])
 
 
 if __name__ == "__main__":
