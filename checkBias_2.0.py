@@ -23,17 +23,18 @@ def parse_options(argv):
 
     sample_input = OptionGroup(parser, 'Input')
 
-    sample_input.add_option('', '--bam_dir',   dest='dir_bam', metavar='FILE', help='Directory of bam files', default='-')
-    sample_input.add_option('', '--fastq_dir', dest='dir_fastq', metavar='FILE', help='Directory of fastq files', default='-')
-    sample_input.add_option('', '--bam_fn',    dest='fn_bam', metavar='FIlE', help='Specifies single bam file', default='-')
-    sample_input.add_option('', '--cnt_dir',   dest='dir_cnt', metavar='FILE', help='Directory of pre-produced tab delimited count files', default='-')
+    sample_input.add_option('', '--bam_dir',          dest='dir_bam', metavar='FILE', help='Directory of bam files', default='-')
+    sample_input.add_option('', '--fastq_dir',        dest='dir_fastq', metavar='FILE', help='Directory of fastq files', default='-')
+    sample_input.add_option('', '--bam_fn',           dest='fn_bam', metavar='FIlE', help='Specifies single bam file', default='-')
+    sample_input.add_option('', '--cnt_dir',          dest='dir_cnt', metavar='FILE', help='Directory of pre-produced tab delimited count files', default='-')
 
-    sample_input.add_option('', '--anno_fn',   dest='fn_anno', metavar='FILE', help='Annotation', default='-')
+    sample_input.add_option('', '--anno_fn',           dest='fn_anno', metavar='FILE', help='Annotation', default='-')
 
-    sample_input.add_option('', '--genome',    dest='fn_genome', metavar='FILE', help='Path to genome file in fasta', default='-')
-    sample_input.add_option('', '--gene_list', dest='fn_genes', metavar='FILE', help='File with gene-names to use', default='-')
+    sample_input.add_option('', '--genome',            dest='fn_genome', metavar='FILE', help='Path to genome file in fasta', default='-')
+    sample_input.add_option('', '--gene_list',         dest='fn_genes', metavar='FILE', help='File with gene-names to use', default='-')
+
     sample_input.add_option('', '--separate_files_ON', dest='separateFiles', action="store_true", help='Consider all input files individually [off]', default=False)
-    sample_input.add_option('', '--sparse_bam_ON', dest='sparseBam', action="store_true", help='Input BAM files are in sparse hdf5 format [off]', default=False)
+    sample_input.add_option('', '--sparse_bam_ON',     dest='sparseBam', action="store_true", help='Input BAM files are in sparse hdf5 format [off]', default=False)
 
     sample_output = OptionGroup(parser, 'Output')
 
@@ -53,9 +54,9 @@ def parse_options(argv):
     opt_gen.add_option('', '--plot_ON',         dest='doPlot', action="store_true", help='Plot figures', default=False)
     opt_gen.add_option('', '--fn_sample_ratio', dest='fn_sample_ratio', metavar='FILE', help='Sample Ratios in relation to yours', default=os.path.join(os.path.realpath(__file__).rsplit('/', 1)[:-1][0], 'data', 'sampleRatios/TCGA_sample_a_ratio_uq.tsv'))
 
-    opt_gen.add_option('', '--mask_filter',     dest='filt', help='Mask all read-counts below this integer', default='0')
+    opt_gen.add_option('', '--mask_filter',               dest='filt', help='Mask all read-counts below this integer', default='0')
     opt_gen.add_option('', '--protein_coding_filter_OFF', dest="proteinCodingFilter", action="store_false", help="Consider only genes that are protein-coding", default=True)
-    opt_gen.add_option('', '--length_filter_OFF', dest="lengthFilter", action="store_false", help="Only consider genes of certain length", default=True)
+    opt_gen.add_option('', '--length_filter_OFF',         dest="lengthFilter", action="store_false", help="Only consider genes of certain length", default=True)
 
     opt_gen.add_option('', '--save_counts_ON',  dest='saveCounts', action='store_true', help='Store the exon counts in .npy and .tsv files for later use', default=False)
     opt_gen.add_option('', '--scale_counts_ON', dest='scaleCounts', action='store_true', help='Scale counts with pre-computed scaling factors for degradation compensation', default=False)
@@ -166,7 +167,7 @@ def main():
                 + glob.glob(os.path.join(options.dir_fastq, '*.fastq.gz')) \
                 + glob.glob(os.path.join(options.dir_fastq, '*.fq')) \
                 + glob.glob(os.path.join(options.dir_fastq, '*.fq.gz'))
-            if options.separate_files:
+            if options.separateFiles:
                 header = fastq_list
             else:
                 header = ','.join(fastq_list)
@@ -174,7 +175,7 @@ def main():
             data = get_counts_from_multiple_fastq(fastq_list, kmers1, kmers2, options)
 
         elif options.dir_bam != '-':
-            if options.sparse_bam:
+            if options.sparseBam:
                 bam_list = glob.glob(os.path.join(options.dir_bam, '*.hdf5'))
                 header = bam_list  ### change this TODO
                 data = get_counts_from_multiple_bam_sparse(bam_list, exon_t_gene)  ### REMOVE
@@ -184,7 +185,7 @@ def main():
                 data = get_counts_from_multiple_bam(bam_list, exon_t_gene)  ### REMOVE
         elif options.fn_bam != '-':
             header = [options.fn_bam]  ### change this TODO
-            if options.sparse_bam:
+            if options.sparseBam:
                 data = get_counts_from_multiple_bam_sparse([options.fn_bam], exon_t_gene)  ### REMOVE
             else:
                 data = get_counts_from_multiple_bam([options.fn_bam], exon_t_gene)  ### REMOVE
@@ -194,8 +195,8 @@ def main():
         logging.info("Normalize counts by exon length")
         if options.qMode == 'raw':
             exonl = sp.array([int(x.split(':')[1].split('-')[1])
-                            - int(x.split(':')[1].split('-')[0]) + 1 for x in exon_t_gene[:, :2].ravel('C')],
-                            dtype='float') / 1000.
+                             - int(x.split(':')[1].split('-')[0]) + 1 for x in exon_t_gene[:, :2].ravel('C')],
+                             dtype='float') / 1000.
             data /= sp.tile(exonl[:, sp.newaxis], data.shape[1])
 
         # Get counts from first and last exon
@@ -249,7 +250,7 @@ def main():
         print "Tukey Filter is estimated to be %f" % (iqr + sp.percentile(vals, 75))
         print "Tukey Filter is estimated to be %f" % (sp.percentile(vals, 25) - iqr)
 
-    sp.savetxt('%s_sample_a_ratio_%s.tsv' % (options.fn_out, options.length),
+    sp.savetxt('%s_sample_a_ratio_%s.tsv' % (options.fn_out, options.readLength),
                sp.vstack((header, vals.astype('string'))).T, delimiter='\t', fmt='%s')
 
     if options.doPlot:
@@ -260,9 +261,9 @@ def main():
 
         base_p_val = sp.hstack((baseline_data, vals))
         midx = sp.hstack((sp.ones(baseline_data.shape[0]), sp.zeros(vals.shape[0]))).astype('bool')
-        plotBias(base_p_val, '%s_bias_sorted_vline_%s.png' % (options.fn_out, options.length), midx)
+        plotBias(base_p_val, '%s_bias_sorted_vline_%s.png' % (options.fn_out, options.readLength), midx)
         midx = sp.hstack((sp.ones(baseline_data.shape[0]), sp.zeros(vals.shape[0]))).astype('bool')
-        plotBias(base_p_val, '%s_bias_sorted_vline_log_%s.png' % (options.fn_out, options.length), midx, logScale=True)
+        plotBias(base_p_val, '%s_bias_sorted_vline_log_%s.png' % (options.fn_out, options.readLength), midx, logScale=True)
 
 
 if __name__ == "__main__":
