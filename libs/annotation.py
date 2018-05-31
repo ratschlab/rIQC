@@ -48,29 +48,29 @@ def __filter_gene_length(exon_t_gene, length):
     return exon_t_gene[k_idx, :]
 
 
-def get_annotation_table(options, length_filter=True):
-    if options.fn_genes == '-':
+def get_annotation_table(fn_genes, fn_anno_tmp, fn_anno, proteinCodingFilter, lengthFilter, length):
+    if fn_genes == '-':
         #MM there already is an anno.tmp file
-        if os.path.exists(options.fn_anno_tmp):
-            exon_t_gene = sp.loadtxt(options.fn_anno_tmp, delimiter='\t', dtype='string')
+        if os.path.exists(fn_anno_tmp):
+            exon_t_gene = sp.loadtxt(fn_anno_tmp, delimiter='\t', dtype='string')
         else:
-            if options.fn_anno.lower().endswith('gff') or options.fn_anno.lower().endswith('gff3'):
-                exon_t_gene = __read_annotation_file(options.fn_anno, options.protein_coding_filter, format='gff')
-            elif options.fn_anno.lower().endswith('gtf'):
-                exon_t_gene = __read_annotation_file(options.fn_anno, options.protein_coding_filter, format='gtf')
+            if fn_anno.lower().endswith('gff') or fn_anno.lower().endswith('gff3'):
+                exon_t_gene = __read_annotation_file(fn_anno, proteinCodingFilter, format='gff')
+            elif fn_anno.lower().endswith('gtf'):
+                exon_t_gene = __read_annotation_file(fn_anno, proteinCodingFilter, format='gtf')
             else:
                 raise Exception(
                     "Only annotation files in formats: gff and gtf are supported. File name must end accordingly")
             #MM anno.tmp is saved without being filtered for "interesting" genes
-            sp.savetxt(options.fn_anno_tmp, exon_t_gene, delimiter='\t', fmt='%s')
+            sp.savetxt(fn_anno_tmp, exon_t_gene, delimiter='\t', fmt='%s')
 
         #MM Filtering
         exon_t_gene = __filter_non_chr_contigs(exon_t_gene)
-        if(length_filter):
-            exon_t_gene = __filter_gene_length(exon_t_gene, options.length)
+        if(lengthFilter):
+            exon_t_gene = __filter_gene_length(exon_t_gene, length)
 
     else:
-        exon_t_gene = sp.loadtxt(options.fn_genes, delimiter=' ', dtype='string')
+        exon_t_gene = sp.loadtxt(fn_genes, delimiter=' ', dtype='string')
 
     return exon_t_gene
 

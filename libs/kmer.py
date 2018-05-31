@@ -42,7 +42,7 @@ def __reverse_complement(seq):
     return ''.join([REV_DIC[_] for _ in seq][::-1])
 
 
-def prepare_kmers(options, regions):
+def prepare_kmers(regions, fn_genome, k):
     print 'Preparing genomic kmers'
     cnt = 0
     # MM: creates array of empty sets (one set for each entry in annotation file)
@@ -52,7 +52,7 @@ def prepare_kmers(options, regions):
     # MM: creates array of chromosome names in the order they occur in annotation file (same length as kmers)
     chrms = sp.array([_.strip('chr') for _ in regions[:, 2]])
     # MM: sequence for each chrm in .fasta file
-    for chrm, seq in __read_genome(options.fn_genome):
+    for chrm, seq in __read_genome(fn_genome):
         print 'processing %s' % chrm
         # MM: array of all indices in chrms-array that match chrm name from .fasta
         idx = sp.where(chrms == chrm)[0]
@@ -78,23 +78,23 @@ def prepare_kmers(options, regions):
                 start2 = int(rec[1].split(':')[1].split('-')[0])
                 end2 = int(rec[1].split(':')[1].split('-')[1])
 
-            if end1 - start1 > options.k:
-                for s in range(start1, end1 - options.k + 1):
-                    kmers1[i].add(seq[s:s + options.k])
-            if not start2 is None and end2 - start2 > options.k:
-                for s in range(start2, end2 - options.k + 1):
-                    kmers2[i].add(seq[s:s + options.k])
+            if end1 - start1 > k:
+                for s in range(start1, end1 - k + 1):
+                    kmers1[i].add(seq[s:s + k])
+            if not start2 is None and end2 - start2 > k:
+                for s in range(start2, end2 - k + 1):
+                    kmers2[i].add(seq[s:s + k])
     # MM: kmers1/2 now consist of sets of kmers of length k, extraced from the fasta file
     #     (kmers that match one entry in annotation are in one set)
     
     return (kmers1, kmers2)
 
 
-def clean_kmers(options, kmers1, kmers2):
-    if(options.fn_pickle_all != None):
-        kmer_pickle = options.fn_pickle_all
+def clean_kmers(kmers1, kmers2, fn_pickle_all, fn_pickle_filt, k, fn_genome):
+    if fn_pickle_all is not None:
+        kmer_pickle = fn_pickle_all
     else:
-        kmer_pickle = 'all_kmers_k%i.pickle' % options.k
+        kmer_pickle = 'all_kmers_k%i.pickle' % k
 
     print 'Making kmers unique'
     if os.path.exists(kmer_pickle):
@@ -103,9 +103,9 @@ def clean_kmers(options, kmers1, kmers2):
         # MM: creates dictionaries with values: 0 and keys: all existing kmers (from fasta)
         all_kmers1 = dict([[_, 0] for s in kmers1 for _ in s])
         all_kmers2 = dict([[_, 0] for s in kmers2 for _ in s])
-        for chrm, seq in __read_genome(options.fn_genome):
+        for chrm, seq in __read_genome(fn_genome):
             print '\nprocessing %s' % chrm
-            for s in range(0, len(seq) - options.k + 1):
+            for s in range(0, len(seq) - k + 1):
                 if s > 0 and s % 100000 == 0:
                     sys.stdout.write('.')
                     if s % 1000000 == 0:
@@ -113,13 +113,13 @@ def clean_kmers(options, kmers1, kmers2):
                     sys.stdout.flush()
                 # MM: only takes kmers that we picked based on annotation file
                 try:
-                    all_kmers1[seq[s:s + options.k]] += 1
-                    all_kmers1[__reverse_complement(seq[s:s + options.k])] += 1
+                    all_kmers1[seq[s:s + k]] += 1
+                    all_kmers1[__reverse_complement(seq[s:s + k])] += 1
                 except KeyError:
                     pass
                 try:
-                    all_kmers2[seq[s:s + options.k]] += 1
-                    all_kmers2[__reverse_complement(seq[s:s + options.k])] += 1
+                    all_kmers2[seq[s:s + k]] += 1
+                    all_kmers2[__reverse_complement(seq[s:s + k])] += 1
                 except KeyError:
                     pass
         cPickle.dump((all_kmers1, all_kmers2), open(kmer_pickle, 'w'), -1)
@@ -141,10 +141,10 @@ def clean_kmers(options, kmers1, kmers2):
     if(float(total) != 0):
         print 'Removed %i non-unique kmers (%.2f percent)' % (removed, removed / float(total) * 100)
 
-    if(options.fn_pickle_filt != None):
-        cPickle.dump((kmers1, kmers2), open(options.fn_pickle_filt, 'w'), -1)
+    if fn_pickle_filt is not None:
+        cPickle.dump((kmers1, kmers2), open(fn_pickle_filt, 'w'), -1)
     else:
-        cPickle.dump((kmers1, kmers2), open(('filt_kmers_k%i.pickle' % options.k), 'w'), -1)
+        cPickle.dump((kmers1, kmers2), open(('filt_kmers_k%i.pickle' % k), 'w'), -1)
     
     return (kmers1, kmers2)
 
