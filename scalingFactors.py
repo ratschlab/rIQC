@@ -64,33 +64,33 @@ def parse_options(argv):
         parser.print_help()
         sys.exit(2)
     if sp.sum(int(options.dir_bam != '-') + int(options.fn_bam != '-')
-              + int(options.dir_cnt != '-') + int(options.fastq_dir != '-')) != 1:
+              + int(options.dir_cnt != '-') + int(options.dir_fastq != '-')) != 1:
         print "Please specify exactly one type of input file(s) (e.g.: Bam, Fastq, Count file)"
         parser.print_help()
         sys.exit(2)
-    if options.fastq_dir != '-' and options.fn_genome == '-':
+    if options.dir_fastq != '-' and options.fn_genome == '-':
         print >> sys.stderr, 'For usage on fastq files a genome file in fasta needs to be provided via -G/--genome'
         sys.exit(2)
     return options
 
 
 def __get_counts_of_marginal_exons(exon_t_gene, data):
-    mycounts = sp.zeros((exon_t_gene.shape[0], data.shape[1], 2))
+    my_counts = sp.zeros((exon_t_gene.shape[0], data.shape[1], 2))
 
     for i, rec in enumerate(exon_t_gene):
 
-        istart = i * 2
-        iend = i * 2 + 1
+        i_start = i * 2
+        i_end = i * 2 + 1
 
         if rec[0].split(':')[-1] == '-' and \
                 int(rec[0].split(':')[1].split('-')[0]) \
                 < int(rec[1].split(':')[1].split('-')[0]):
-            istart, iend = iend, istart
+            i_start, i_end = i_end, i_start
 
-        mycounts[i, :, 0] = data[istart, :]
-        mycounts[i, :, 1] = data[iend, :]
+        my_counts[i, :, 0] = data[i_start, :]
+        my_counts[i, :, 1] = data[i_end, :]
 
-    return mycounts
+    return my_counts
 
 
 def main():
@@ -101,8 +101,8 @@ def main():
     logging.basicConfig(filename=options.fn_log, level=0, format='%(asctime)s - %(levelname)s - %(message)s')
     log = logging.getLogger()
     if options.isVerbose:
-        consoleHandler = logging.StreamHandler()
-        log.addHandler(consoleHandler)
+        console_handler = logging.StreamHandler()
+        log.addHandler(console_handler)
 
     if options.dir_cnt != '-':
         count_files = 0
@@ -135,7 +135,7 @@ def main():
             options.lengthFilter,
             options.readLength)
 
-        if options.fastq_dir != '-':
+        if options.dir_fastq != '-':
             if options.fn_pickle_filt is not None \
                     and os.path.exists(options.fn_pickle_filt):
                 (kmers1, kmers2) = cPickle.load(open(options.fn_pickle_filt, 'r'))
@@ -156,10 +156,10 @@ def main():
                     options.k,
                     options.fn_genome)
 
-            fastq_list = glob.glob(os.path.join(options.fastq_dir, '*.fastq')) \
-                + glob.glob(os.path.join(options.fastq_dir, '*.fastq.gz')) \
-                + glob.glob(os.path.join(options.fastq_dir, '*.fq')) \
-                + glob.glob(os.path.join(options.fastq_dir, '*.fq.gz'))
+            fastq_list = glob.glob(os.path.join(options.dir_fastq, '*.fastq')) \
+                + glob.glob(os.path.join(options.dir_fastq, '*.fastq.gz')) \
+                + glob.glob(os.path.join(options.dir_fastq, '*.fq')) \
+                + glob.glob(os.path.join(options.dir_fastq, '*.fq.gz'))
 
             # MM data is np.ndarray
             # MM data contains all counts for first and last exon of each gene
@@ -167,14 +167,14 @@ def main():
             data = get_counts_from_multiple_fastq(fastq_list, kmers1, kmers2, options)
 
         elif options.dir_bam != '-':
-            if options.sparse_bam:
+            if options.sparseBam:
                 bam_list = glob.glob(os.path.join(options.dir_bam, '*.hdf5'))
                 data = get_counts_from_multiple_bam_sparse(bam_list, exon_t_gene)
             else:
                 bam_list = glob.glob(os.path.join(options.dir_bam, '*.bam'))
                 data = get_counts_from_multiple_bam(bam_list, exon_t_gene)
         elif options.fn_bam != '-':
-            if options.sparse_bam:
+            if options.sparseBam:
                 data = get_counts_from_multiple_bam_sparse([options.fn_bam], exon_t_gene)
             else:
                 data = get_counts_from_multiple_bam([options.fn_bam], exon_t_gene)
