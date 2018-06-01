@@ -61,7 +61,7 @@ def parse_options(argv):
     opt_gen.add_option('', '--save_counts_ON',  dest='saveCounts', action='store_true', help='Store the exon counts in .npy and .tsv files for later use', default=False)
     opt_gen.add_option('', '--scale_counts_ON', dest='scaleCounts', action='store_true', help='Scale counts with pre-computed scaling factors for degradation compensation', default=False)
 
-    opt_gen.add_option('', '--sparse_bam', dest='sparse_bam', action="store_true", help='Input BAM files are in sparse hdf5 format [off]', default=False)
+    opt_gen.add_option('', '--legacy', dest='legacy', action="store_true", help='Switch on some legacy behavior', default=False)
     opt_gen.add_option('', '--plot', dest='doPlot', action="store_true", help='Plot figures', default=False)
     
     opt_kmer = OptionGroup(parser, 'Options for k-mer counting')
@@ -146,7 +146,8 @@ def main():
             options.fn_anno,
             options.proteinCodingFilter,
             options.lengthFilter,
-            options.readLength)
+            options.readLength,
+            options.legacy)
 
         if options.dir_fastq != '-':
             if options.fn_pickle_filt is not None \

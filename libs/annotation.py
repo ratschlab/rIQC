@@ -48,16 +48,16 @@ def __filter_gene_length(exon_t_gene, length):
     return exon_t_gene[k_idx, :]
 
 
-def get_annotation_table(fn_genes, fn_anno_tmp, fn_anno, proteinCodingFilter, lengthFilter, length):
+def get_annotation_table(fn_genes, fn_anno_tmp, fn_anno, proteinCodingFilter, lengthFilter, length, legacy):
     if fn_genes == '-':
         #MM there already is an anno.tmp file
         if os.path.exists(fn_anno_tmp):
             exon_t_gene = sp.loadtxt(fn_anno_tmp, delimiter='\t', dtype='string')
         else:
             if fn_anno.lower().endswith('gff') or fn_anno.lower().endswith('gff3'):
-                exon_t_gene = __read_annotation_file(fn_anno, proteinCodingFilter, format='gff')
+                exon_t_gene = __read_annotation_file(fn_anno, proteinCodingFilter, format='gff', legacy=legacy)
             elif fn_anno.lower().endswith('gtf'):
-                exon_t_gene = __read_annotation_file(fn_anno, proteinCodingFilter, format='gtf')
+                exon_t_gene = __read_annotation_file(fn_anno, proteinCodingFilter, format='gtf', legacy=legacy)
             else:
                 raise Exception(
                     "Only annotation files in formats: gff and gtf are supported. File name must end accordingly")
@@ -74,14 +74,17 @@ def get_annotation_table(fn_genes, fn_anno_tmp, fn_anno, proteinCodingFilter, le
 
     return exon_t_gene
 
-def __get_transcript_length(rec):
+def __get_transcript_length(rec, legacy=False):
     # list of all exon-intervals
     ex_pieces = sp.array(rec.split(':')[1].split(','))
     lgt = 0
 
     for i, x in enumerate(ex_pieces[0:]):
         start, end = x.split('-')
-        lgt += int(end) - int(start) + 1
+        if legacy and i == 0:
+            lgt += (int(end) - int(start) + 1) / 2.
+        else:
+            lgt += int(end) - int(start) + 1
     return lgt
 
 
@@ -281,13 +284,10 @@ def __reading_anno(fn, overlapgenes, protein_coding_filter, format):
     return data
 
 
-def __process_single_transcript_genes(tcrpt):
+def __process_single_transcript_genes(tcrpt, legacy=False):
     assert len(tcrpt) == 1, "Too many transcripts to process"
 
     # checking that we have at least two exons
-    return data
-
-
     tcrpt = tcrpt[0]
     if tcrpt.find(',') == -1:
         return None
@@ -297,7 +297,7 @@ def __process_single_transcript_genes(tcrpt):
 
     firstEx = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[0] + ':' + tcrpt.split(':')[2]
     lastEx = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[-1] + ':' + tcrpt.split(':')[2]
-    return [firstEx, lastEx, tcrpt.split(':')[0], tcrpt.split(':')[2], __get_transcript_length(tcrpt)]
+    return [firstEx, lastEx, tcrpt.split(':')[0], tcrpt.split(':')[2], __get_transcript_length(tcrpt, legacy)]
 
 
 def __process_multi_transcript_genes(tcrpts):
@@ -341,7 +341,7 @@ def __process_multi_transcript_genes(tcrpts):
     return [firstEx, lastEx, tcrpts[0].split(':')[0], tcrpts[0].split(':')[2], str(sp.median(myExStrucL))]
 
 
-def __read_annotation_file(fn, protein_coding_filter, format):
+def __read_annotation_file(fn, protein_coding_filter, format, legacy=False):
     # get list of overlapping genes
     overlapgenes = __get_overlap_genes(fn, format)
 
@@ -353,7 +353,7 @@ def __read_annotation_file(fn, protein_coding_filter, format):
     for gid in uq_g_id:
         # process transcripts
         if len(data[gid]) == 1:
-            temp = __process_single_transcript_genes(data[gid])
+            temp = __process_single_transcript_genes(data[gid], legacy)
         else:
             temp = __process_multi_transcript_genes(data[gid])
 
@@ -363,7 +363,6 @@ def __read_annotation_file(fn, protein_coding_filter, format):
         else:
             temp.extend([gid])
             new_data.append(temp)
-    pdb.set_trace()
     new_data = sp.array(new_data)
     s_idx = sp.argsort(new_data[:, 5])
     new_data = new_data[s_idx, :]
