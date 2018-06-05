@@ -236,10 +236,16 @@ def main():
                 low_b = nmb_exons / options.nmb_bins * j
                 up_b = nmb_exons / options.nmb_bins * (j + 1)
                 idx_l = idx_s[low_b:up_b]
+
+                avg_scale[i, j, 2] = exon_lengths[idx_s[low_b]]
+                avg_scale[i, j, 3] = exon_lengths[idx_s[up_b]]
             else:
                 low_b = upper_length_bound / options.nmb_bins * j
                 up_b = upper_length_bound / options.nmb_bins * (j + 1)
                 idx_l = sp.intersect1d(np.where(low_b < exon_lengths)[0], np.where(exon_lengths <= up_b)[0])
+
+                avg_scale[i, j, 2] = low_b
+                avg_scale[i, j, 3] = up_b
 
             # indices of genes that have right length and a scale factor
             comb_idx = sp.intersect1d(i_ok, idx_l)
