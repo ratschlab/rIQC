@@ -44,9 +44,10 @@ def parse_options(argv):
     opt_gen.add_option('', '--log',              dest='fn_log', metavar='FILE', help='Log file', default='out.log')
     opt_gen.add_option('', '--verbose_ON',       dest='isVerbose', action="store_true", help='Set Logger To Verbose', default=False)
 
-    opt_gen.add_option('', '--protein-coding-filter_ON', dest="proteinCodingFilter", action="store_true", help="Consider only genes that are protein-coding", default=False)
+    opt_gen.add_option('', '--protein_coding_filter_ON', dest="proteinCodingFilter", action="store_true", help="Consider only genes that are protein-coding", default=False)
     opt_gen.add_option('', '--length_filter_ON', dest="lengthFilter", action="store_true", help="Only consider genes of certain length", default=False)
     opt_gen.add_option('', '--bins', dest='nmb_bins', type='int', help='Number of bins for different gene lengths', default=10)
+    opt_gen.add_option('', '--relative_binning_ON', dest='relativeBinning', action="store_true", help="Have relative (to number of genes) bin boundaries instead of absolute values", default=False)
 
     opt_kmer = OptionGroup(parser, 'Options for k-mer counting')
 
@@ -201,8 +202,9 @@ def main():
         my_counts = __get_counts_of_marginal_exons(exon_t_gene, data)
 
     #MM for binning
-    exonLengths = exon_t_gene[:, 4].astype(float)
-    upperLengthBound = np.ceil(np.amax(exonLengths))
+    exon_lengths = exon_t_gene[:, 4].astype(float)
+    upper_length_bound = np.ceil(np.amax(exon_lengths))
+    nmb_exons = exon_lengths.shape[0]
 
     scale = sp.zeros((my_counts.shape[0], my_counts.shape[1]))
     #MM average scales with interval and #genes that contribute
@@ -229,9 +231,15 @@ def main():
         scale[i_ok, i] = (my_counts[i_ok, i, 1] / my_counts[i_ok, i, 0])
 
         for j in range(options.nmb_bins):
-            low_b = upperLengthBound / options.nmb_bins * j
-            up_b = upperLengthBound / options.nmb_bins * (j + 1)
-            idx_l = sp.intersect1d(np.where(low_b < exonLengths)[0], np.where(exonLengths <= up_b)[0])
+            if options.relativeBinning:
+                idx_s = np.argsort(exon_lengths)
+                low_b = nmb_exons / options.nmb_bins * j
+                up_b = nmb_exons / options.nmb_bins * (j + 1)
+                idx_l = idx_s[low_b:up_b]
+            else:
+                low_b = upper_length_bound / options.nmb_bins * j
+                up_b = upper_length_bound / options.nmb_bins * (j + 1)
+                idx_l = sp.intersect1d(np.where(low_b < exon_lengths)[0], np.where(exon_lengths <= up_b)[0])
 
             # indices of genes that have right length and a scale factor
             comb_idx = sp.intersect1d(i_ok, idx_l)
