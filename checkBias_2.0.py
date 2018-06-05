@@ -62,7 +62,7 @@ def parse_options(argv):
     opt_gen.add_option('', '--scale_counts_ON', dest='scaleCounts', action='store_true', help='Scale counts with pre-computed scaling factors for degradation compensation', default=False)
 
     opt_gen.add_option('', '--legacy', dest='legacy', action="store_true", help='Switch on some legacy behavior', default=False)
-    opt_gen.add_option('', '--plot', dest='doPlot', action="store_true", help='Plot figures', default=False)
+    opt_gen.add_option('', '--plot',   dest='doPlot', action="store_true", help='Plot figures', default=False)
     
     opt_kmer = OptionGroup(parser, 'Options for k-mer counting')
 

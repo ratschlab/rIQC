@@ -107,15 +107,15 @@ def main():
     if options.dir_cnt != '-':
         count_files = 0
         cnt_file = None
-        for cnt_file in glob.glob(options.fn_out + "counts_*.npy"):
+        for cnt_file in glob.glob(options.fn_out + "_counts_*.npy"):
             count_files = count_files + 1
 
         if cnt_file is not None and count_files > 0:
-            header = sp.loadtxt(options.fn_out + "header.tsv", delimiter="\t", dtype="string")
+            header = sp.loadtxt(options.fn_out + "_counts_header.tsv", delimiter="\t", dtype="string")
             exon_t_gene = np.load(cnt_file)[:, :-2]
             my_counts = sp.zeros((exon_t_gene.shape[0], count_files, 2))
             for i in xrange(count_files):
-                my_counts[:, i, :] = np.load(options.fn_out + 'counts_' + str(i) + '.npy')[:, -2:]
+                my_counts[:, i, :] = np.load(options.fn_out + '_counts_' + str(i) + '.npy')[:, -2:]
         else:
             print "No count files found in specified directory"
             sys.exit(1)
@@ -161,6 +161,11 @@ def main():
                 + glob.glob(os.path.join(options.dir_fastq, '*.fq')) \
                 + glob.glob(os.path.join(options.dir_fastq, '*.fq.gz'))
 
+            if options.separateFiles:
+                header = fastq_list
+            else:
+                header = ','.join(fastq_list)
+
             # MM data is np.ndarray
             # MM data contains all counts for first and last exon of each gene
             # MM in case of multiple files in directory: each column contains counts for one file
@@ -173,7 +178,9 @@ def main():
             else:
                 bam_list = glob.glob(os.path.join(options.dir_bam, '*.bam'))
                 data = get_counts_from_multiple_bam(bam_list, exon_t_gene)
+            header = bam_list
         elif options.fn_bam != '-':
+            header = [options.fn_bam]
             if options.sparseBam:
                 data = get_counts_from_multiple_bam_sparse([options.fn_bam], exon_t_gene)
             else:
@@ -198,6 +205,8 @@ def main():
     scale = sp.zeros((my_counts.shape[0], my_counts.shape[1]))
     #MM average scales with interval and #genes that contribute
     avg_scale = sp.zeros((my_counts.shape[1], options.nmb_bins, 4))
+
+    sp.savetxt(options.fn_out + "_scalingFactors_header.tsv", header, delimiter="\t", fmt="%s")
 
     #MM for every file that was read in
     for i in xrange(my_counts.shape[1]):
