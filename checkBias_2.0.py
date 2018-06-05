@@ -215,13 +215,11 @@ def main():
                 np.save(options.fn_out + '_counts_' + str(i) + '.npy', exon_table)
                 sp.savetxt(options.fn_out + '_counts_' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
 
-
-
     if options.scaleCounts \
             and (os.path.exists(options.fn_out + "_scalingFactors_" + str(j) + ".npy") for j in range(my_counts.shape[1])):
         for i in xrange(my_counts.shape[1]):
             scaling_factors = np.load(options.fn_out + "_scalingFactors_" + str(i) + ".npy")
-            #MM that is number of bins
+            #MM j corresponds to number of bins
             for j in xrange(scaling_factors.shape[1]):
                 low_b = scaling_factors[2]
                 up_b = scaling_factors[3]
@@ -229,7 +227,12 @@ def main():
                 i_ok = np.where(low_b < exon_t_gene[:, 4] <= up_b)
                 my_counts[i_ok, i, 0] = my_counts[i_ok, i, 0] * factor
 
-
+        #MM Save scaled counts for experimental purposes - can be removed later
+        sp.savetxt(options.fn_out + "_scaledCounts_header.tsv", header, delimiter="\t", fmt="%s")
+        for i in xrange(my_counts.shape[1]):
+            exon_table = np.column_stack((exon_t_gene[:, :], my_counts[:, i, :]))
+            np.save(options.fn_out + '_scaledCounts_' + str(i) + '.npy', exon_table)
+            sp.savetxt(options.fn_out + '_scaledCounts_' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
 
     logging.info("Calculate Bias and Find Median")
 
