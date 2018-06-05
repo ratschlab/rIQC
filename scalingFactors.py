@@ -133,7 +133,9 @@ def main():
             options.fn_anno,
             options.proteinCodingFilter,
             options.lengthFilter,
-            options.readLength)
+            options.readLength,
+            False #legacy attribute
+            )
 
         if options.dir_fastq != '-':
             if options.fn_pickle_filt is not None \
