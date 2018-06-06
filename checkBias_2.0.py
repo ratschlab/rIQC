@@ -28,6 +28,8 @@ def parse_options(argv):
     sample_input.add_option('', '--bam_fn',           dest='fn_bam', metavar='FIlE', help='Specifies single bam file', default='-')
     sample_input.add_option('', '--cnt_dir',          dest='dir_cnt', metavar='FILE', help='Directory of pre-produced tab delimited count files', default='-')
 
+    sample_input.add_option('', '--scale_factors_dir', dest='dir_scale_factors', metavar='FILE', help='Directory of scaling factor files', default='-')
+
     sample_input.add_option('', '--anno_fn',           dest='fn_anno', metavar='FILE', help='Annotation', default='-')
 
     sample_input.add_option('', '--genome',            dest='fn_genome', metavar='FILE', help='Path to genome file in fasta', default='-')
@@ -87,6 +89,10 @@ def parse_options(argv):
     if options.dir_fastq != '-' and options.fn_genome == '-':
         print >> sys.stderr, 'For usage on fastq files a genome file in fasta needs to be provided via -G/--genome'
         sys.exit(2)
+    if options.dir_scale_factors != '-' and options.scaleCounts:
+        print >> sys.stderr, 'For usage of scaling functions please provide a directory with .npy files that contain' \
+                             ' the scaling factors (use scalingFactors.py to create them)'
+        sys.exit(2)
     return options
 
 
@@ -123,15 +129,15 @@ def main():
     if options.dir_cnt != '-':
         count_files = 0
         cnt_file = None
-        for cnt_file in glob.glob(options.fn_out + "_counts_*.npy"):
+        for cnt_file in glob.glob("counts_*.npy"):
             count_files = count_files + 1
 
         if cnt_file is not None and count_files > 0:
-            header = sp.loadtxt(options.fn_out + "_counts_header.tsv", delimiter="\t", dtype="string")
+            header = sp.loadtxt("counts_header.tsv", delimiter="\t", dtype="string")
             exon_t_gene = np.load(cnt_file)[:, :-2]
             my_counts = sp.zeros((exon_t_gene.shape[0], count_files, 2))
             for i in xrange(count_files):
-                my_counts[:, i, :] = np.load(options.fn_out + '_counts_' + str(i) + '.npy')[:, -2:]
+                my_counts[:, i, :] = np.load('counts_' + str(i) + '.npy')[:, -2:]
         else:
             print "No count files found in specified directory"
             sys.exit(1)
@@ -209,16 +215,16 @@ def main():
 
         if options.saveCounts:
             # MM CAVEAT: Order of exon-positions and counts might be switched (strand! --> see fct to get counts)
-            sp.savetxt(options.fn_out + "_counts_header.tsv", header, delimiter="\t", fmt="%s")
+            sp.savetxt("counts_header.tsv", header, delimiter="\t", fmt="%s")
             for i in xrange(my_counts.shape[1]):
                 exon_table = np.column_stack((exon_t_gene[:, :], my_counts[:, i, :]))
-                np.save(options.fn_out + '_counts_' + str(i) + '.npy', exon_table)
+                np.save('counts_' + str(i) + '.npy', exon_table)
                 sp.savetxt(options.fn_out + '_counts_' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
 
     if options.scaleCounts \
-            and (os.path.exists(options.fn_out + "_scalingFactors_" + str(j) + ".npy") for j in range(my_counts.shape[1])):
+            and (os.path.exists("scalingFactors_" + str(j) + ".npy") for j in range(my_counts.shape[1])):
         for i in xrange(my_counts.shape[1]):
-            scaling_factors = np.load(options.fn_out + "_scalingFactors_" + str(i) + ".npy")
+            scaling_factors = np.load("scalingFactors_" + str(i) + ".npy")
             #MM j corresponds to number of bins
             for j in xrange(scaling_factors.shape[1]):
                 low_b = scaling_factors[2]
