@@ -48,6 +48,7 @@ def parse_options(argv):
     opt_gen.add_option('', '--length_filter_ON', dest="lengthFilter", action="store_true", help="Only consider genes of certain length", default=False)
     opt_gen.add_option('', '--bins', dest='nmb_bins', type='int', help='Number of bins for different gene lengths', default=10)
     opt_gen.add_option('', '--relative_binning_ON', dest='relativeBinning', action="store_true", help="Have relative (to number of genes) bin boundaries instead of absolute values", default=False)
+    opt_gen.add_option('', '--average_factors_ON', dest='averageFactors', action='store_true', help="Compute factors by using average (instead of median)", default=False)
 
     opt_kmer = OptionGroup(parser, 'Options for k-mer counting')
 
@@ -250,8 +251,11 @@ def main():
             # indices of genes that have right length and a scale factor
             comb_idx = sp.intersect1d(i_ok, idx_l)
 
-            if comb_idx.shape[0] != 0:
+            if comb_idx.shape[0] != 0 and options.averageFactors:
                 avg_scale[i, j, 0] = sp.sum(scale[comb_idx, i]) / comb_idx.shape[0]
+                avg_scale[i, j, 1] = comb_idx.shape[0]
+            elif comb_idx.shape[0] != 0: # Take median
+                avg_scale[i, j, 0] = sp.percentile(scale[comb_idx, i], 50)
                 avg_scale[i, j, 1] = comb_idx.shape[0]
             else:
                 avg_scale[i, j, 0] = 0
