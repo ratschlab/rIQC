@@ -88,7 +88,7 @@ def __get_transcript_length(rec, legacy=False):
     return lgt
 
 
-def __get_transcript_length_bex(rec, firstEx, lastEx):
+def __get_transcript_length_bex(rec, firstEx, lastEx, legacy=False):
     """
     Returns transcript length defined as sum of length of exons
     """
@@ -97,15 +97,15 @@ def __get_transcript_length_bex(rec, firstEx, lastEx):
     lgt = 0
     for i, x in enumerate(expieces):
         start, end = x.split('-')
-        if x == firstEx:
+        if x == firstEx and legacy:
             foundFirst = True
             lgt += 0.5 * (int(end) - int(start) + 1)
             continue
-        if x == lastEx:
+        if x == lastEx and legacy:
             foundFirst = False
             lgt += 0.5 * (int(end) - int(start) + 1)
             break
-        if foundFirst:
+        if foundFirst or not legacy:
             lgt += int(end) - int(start) + 1
     assert lgt != 0, "Outch, there are transcripts with no length"
     return lgt
@@ -300,7 +300,7 @@ def __process_single_transcript_genes(tcrpt, legacy=False):
     return [firstEx, lastEx, tcrpt.split(':')[0], tcrpt.split(':')[2], __get_transcript_length(tcrpt, legacy)]
 
 
-def __process_multi_transcript_genes(tcrpts):
+def __process_multi_transcript_genes(tcrpts, legacy=False):
     #MM CAVEAT: We only use transcript isoforms that have at least two exons
     if sp.sum(np.core.defchararray.find(tcrpts, ',') != -1) != len(tcrpts):
         return None
@@ -334,7 +334,7 @@ def __process_multi_transcript_genes(tcrpts):
     # get length of all transcripts
     myExStrucL = []
     for i, rec in enumerate(tcrpts):
-        myExStrucL.append(__get_transcript_length_bex(rec, firstEx, lastEx))
+        myExStrucL.append(__get_transcript_length_bex(rec, firstEx, lastEx, legacy))
 
     firstEx = tcrpts[0].split(':')[0] + ':' + firstEx + ':' + tcrpts[0].split(':')[2]
     lastEx = tcrpts[0].split(':')[0] + ':' + lastEx + ':' + tcrpts[0].split(':')[2]
