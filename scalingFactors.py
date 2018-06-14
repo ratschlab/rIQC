@@ -168,7 +168,7 @@ def main():
     options = parse_options(sys.argv)
 
     # Set up logger
-    logging.basicConfig(filename=options.fn_log, level=0, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(filename=options.dir_out + "/" + options.fn_log, level=0, format='%(asctime)s - %(levelname)s - %(message)s')
     log = logging.getLogger()
     if options.isVerbose:
         console_handler = logging.StreamHandler()
