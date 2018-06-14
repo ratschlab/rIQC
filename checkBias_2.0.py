@@ -16,6 +16,7 @@ from libs.viz import *
 from libs.bam import *
 from libs.bam_sparse import *
 from libs.kmer import *
+from scalingFactors import get_scaling_factors
 
 
 def parse_options(argv):
@@ -24,8 +25,8 @@ def parse_options(argv):
     sample_input = OptionGroup(parser, 'Input')
 
     sample_input.add_option('', '--bam_dir',          dest='dir_bam', metavar='FILE', help='Directory of bam files', default='-')
-    sample_input.add_option('', '--fastq_dir',        dest='dir_fastq', metavar='FILE', help='Directory of fastq files', default='-')
     sample_input.add_option('', '--bam_fn',           dest='fn_bam', metavar='FIlE', help='Specifies single bam file', default='-')
+    sample_input.add_option('', '--fastq_dir',        dest='dir_fastq', metavar='FILE', help='Directory of fastq files', default='-')
     sample_input.add_option('', '--cnt_dir',          dest='dir_cnt', metavar='FILE', help='Directory of pre-produced tab delimited count files', default='-')
 
     sample_input.add_option('', '--scale_factors_dir', dest='dir_scale_factors', metavar='FILE', help='Directory of scaling factor files', default='-')
@@ -40,8 +41,9 @@ def parse_options(argv):
 
     sample_output = OptionGroup(parser, 'Output')
 
+    sample_output.add_option('', '--out_dir',     dest='dir_out', metavar='FILE', help='directory to store output in', default='.')
     sample_output.add_option('', '--out_fn',      dest='fn_out', metavar='FILE', help='prefix for output', default='out')
-    sample_output.add_option('', '--anno_tmp_fn', dest='fn_anno_tmp', metavar='FILE', help='Temp file for storing anno info', default='anno.tmp')
+    sample_output.add_option('', '--anno_tmp_fn', dest='fn_anno_tmp', metavar='FILE', help='Temp file for storing anno info', default='')
     sample_output.add_option('', '--pickle_all',  dest='fn_pickle_all', metavar='FILE', help='Pickle file for storing all kmers', default=None)
     sample_output.add_option('', '--pickle_filt', dest='fn_pickle_filt', metavar='FILE', help='Pickle file for storing filtered/cleaned kmers', default=None)
 
@@ -90,9 +92,8 @@ def parse_options(argv):
         print >> sys.stderr, 'For usage on fastq files a genome file in fasta needs to be provided via -G/--genome'
         sys.exit(2)
     if options.dir_scale_factors != '-' and options.scaleCounts:
-        print >> sys.stderr, 'For usage of scaling functions please provide a directory with .npy files that contain' \
-                             ' the scaling factors (use scalingFactors.py to create them)'
-        sys.exit(2)
+        print 'CAVEAT: You have not provided pre-computed scaling factors ' \
+              '--> they will be computed on the fly using default settings (see scalingFactors.py)'
     return options
 
 
@@ -129,17 +130,17 @@ def main():
     if options.dir_cnt != '-':
         count_files = 0
         cnt_file = None
-        for cnt_file in glob.glob("counts_*.npy"):
+        for cnt_file in glob.glob(options.dir_cnt + "/counts_*.npy"):
             count_files = count_files + 1
 
         if cnt_file is not None and count_files > 0:
-            header = sp.loadtxt("counts_header.tsv", delimiter="\t", dtype="string")
+            header = sp.loadtxt(options.dir_cnt + "/counts_header.tsv", delimiter="\t", dtype="string")
             exon_t_gene = np.load(cnt_file)[:, :-2]
             my_counts = sp.zeros((exon_t_gene.shape[0], count_files, 2))
             for i in xrange(count_files):
-                my_counts[:, i, :] = np.load('counts_' + str(i) + '.npy')[:, -2:]
+                my_counts[:, i, :] = np.load(options.dir_cnt + '/counts_' + str(i) + '.npy')[:, -2:]
         else:
-            print "No count files found in specified directory"
+            print "No count files found in specified directory %s" % options.dir_cnt
             sys.exit(1)
 
     else:
@@ -215,30 +216,32 @@ def main():
 
         if options.saveCounts:
             # MM CAVEAT: Order of exon-positions and counts might be switched (strand! --> see fct to get counts)
-            sp.savetxt("counts_header.tsv", header, delimiter="\t", fmt="%s")
+            sp.savetxt(options.dir_out + "/counts_header.tsv", header, delimiter="\t", fmt="%s")
             for i in xrange(my_counts.shape[1]):
                 exon_table = np.column_stack((exon_t_gene[:, :], my_counts[:, i, :]))
-                np.save('counts_' + str(i) + '.npy', exon_table)
-                sp.savetxt(options.fn_out + '_counts_' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
+                np.save(options.dir_out + '/counts_' + str(i) + '.npy', exon_table)
+                sp.savetxt(options.dir_out + '/counts_' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
 
-    if options.scaleCounts \
-            and (os.path.exists("scalingFactors_" + str(j) + ".npy") for j in range(my_counts.shape[1])):
-        for i in xrange(my_counts.shape[1]):
-            scaling_factors = np.load("scalingFactors_" + str(i) + ".npy")
-            #MM j corresponds to number of bins
-            for j in xrange(scaling_factors.shape[1]):
-                low_b = scaling_factors[2]
-                up_b = scaling_factors[3]
-                factor = scaling_factors[j, 0]
-                i_ok = np.where(low_b < exon_t_gene[:, 4] <= up_b)
-                my_counts[i_ok, i, 0] = my_counts[i_ok, i, 0] * factor
+    if options.scaleCounts:
+        if (os.path.exists(options.dir_scale_factors + "/scalingFactors_" + str(j) + ".npy") for j in range(my_counts.shape[1])):
+            for i in xrange(my_counts.shape[1]):
+                scaling_factors = np.load(options.dir_scale_factors + "/scalingFactors_" + str(i) + ".npy")
+                #MM j corresponds to number of bins
+                for j in xrange(scaling_factors.shape[1]):
+                    low_b = scaling_factors[2]
+                    up_b = scaling_factors[3]
+                    factor = scaling_factors[j, 0]
+                    i_ok = np.where(low_b < exon_t_gene[:, 4] <= up_b)
+                    my_counts[i_ok, i, 0] = my_counts[i_ok, i, 0] * factor
+        else:
+            get_scaling_factors(options.dir_out, exon_t_gene, my_counts, header)
 
         #MM Save scaled counts for experimental purposes - can be removed later
-        sp.savetxt(options.fn_out + "_scaledCounts_header.tsv", header, delimiter="\t", fmt="%s")
+        sp.savetxt(options.dir_out + "/scaledCounts_header.tsv", header, delimiter="\t", fmt="%s")
         for i in xrange(my_counts.shape[1]):
             exon_table = np.column_stack((exon_t_gene[:, :], my_counts[:, i, :]))
-            np.save(options.fn_out + '_scaledCounts_' + str(i) + '.npy', exon_table)
-            sp.savetxt(options.fn_out + '_scaledCounts_' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
+            np.save(options.dir_out + '/scaledCounts_' + str(i) + '.npy', exon_table)
+            sp.savetxt(options.dir_out + '/scaledCounts_' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
 
     logging.info("Calculate Bias and Find Median")
 
@@ -265,7 +268,7 @@ def main():
         print "Tukey Filter is estimated to be %f" % (iqr + sp.percentile(vals, 75))
         print "Tukey Filter is estimated to be %f" % (sp.percentile(vals, 25) - iqr)
 
-    sp.savetxt('%s_sample_a_ratio_%s.tsv' % (options.fn_out, options.readLength),
+    sp.savetxt(options.dir_out + '/%s_sample_a_ratio_%s.tsv' % (options.fn_out, options.readLength),
                sp.vstack((header, vals.astype('string'))).T, delimiter='\t', fmt='%s')
 
     if options.doPlot:

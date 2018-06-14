@@ -48,9 +48,26 @@ def __filter_gene_length(exon_t_gene, length):
     return exon_t_gene[k_idx, :]
 
 
+def __name_anno_tmp_file(proteinCodingFilter, lengthFilter, length):
+    fn_anno_tmp = 'anno'
+
+    if proteinCodingFilter:
+        fn_anno_tmp = fn_anno_tmp + '_pcfON'
+    else:
+        fn_anno_tmp = fn_anno_tmp + '_pcfOFF'
+
+    if lengthFilter:
+        fn_anno_tmp = fn_anno_tmp + '_%s' % length
+    else:
+        fn_anno_tmp = fn_anno_tmp + 'lfOFF'
+
+    return fn_anno_tmp + '.tmp'
+
+
 def get_annotation_table(fn_genes, fn_anno_tmp, fn_anno, proteinCodingFilter, lengthFilter, length, legacy):
     if fn_genes == '-':
-        #MM there already is an anno.tmp file
+        if fn_anno_tmp == '':
+            fn_anno_tmp = __name_anno_tmp_file(proteinCodingFilter, lengthFilter, length)
         if os.path.exists(fn_anno_tmp):
             exon_t_gene = sp.loadtxt(fn_anno_tmp, delimiter='\t', dtype='string')
         else:
@@ -66,7 +83,7 @@ def get_annotation_table(fn_genes, fn_anno_tmp, fn_anno, proteinCodingFilter, le
 
         #MM Filtering
         exon_t_gene = __filter_non_chr_contigs(exon_t_gene)
-        if(lengthFilter):
+        if lengthFilter:
             exon_t_gene = __filter_gene_length(exon_t_gene, length)
 
     else:
