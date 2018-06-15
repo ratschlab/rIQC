@@ -89,6 +89,7 @@ def get_annotation_table(fn_genes, fn_anno_tmp, fn_anno, proteinCodingFilter, le
 
     return exon_t_gene
 
+
 def __get_transcript_length(rec, legacy=False):
     # list of all exon-intervals
     ex_pieces = sp.array(rec.split(':')[1].split(','))
@@ -112,11 +113,11 @@ def __get_transcript_length_bex(rec, firstEx, lastEx, legacy=False):
     lgt = 0
     for i, x in enumerate(expieces):
         start, end = x.split('-')
-        if x == firstEx and legacy:
+        if legacy and x == firstEx:
             foundFirst = True
             lgt += 0.5 * (int(end) - int(start) + 1)
             continue
-        if x == lastEx and legacy:
+        if legacy and x == lastEx:
             foundFirst = False
             lgt += 0.5 * (int(end) - int(start) + 1)
             break
@@ -370,7 +371,7 @@ def __read_annotation_file(fn, protein_coding_filter, format, legacy=False):
         if len(data[gid]) == 1:
             temp = __process_single_transcript_genes(data[gid], legacy)
         else:
-            temp = __process_multi_transcript_genes(data[gid])
+            temp = __process_multi_transcript_genes(data[gid], legacy)
 
         # make sure it has been processed correctly
         if temp is None:
