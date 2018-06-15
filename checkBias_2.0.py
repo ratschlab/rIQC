@@ -260,7 +260,6 @@ def main():
 
     vals = sp.array(vals)
 
-    sidx = sp.argsort(vals)
     iqr = ((sp.percentile(vals, 75) - sp.percentile(vals, 25)) * 1.5)
 
     logging.info("Tukey Filter is estimated to be %f" % (iqr + sp.percentile(vals, 75)))
