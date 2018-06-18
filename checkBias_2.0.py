@@ -236,7 +236,7 @@ def main():
                 low_b = scaling_factors[i, j, 2]
                 up_b = scaling_factors[i, j, 3]
                 factor = scaling_factors[i, j, 0]
-                i_ok = np.where(low_b < exon_lengths <= up_b)
+                i_ok = sp.intersect1d(np.where(low_b < exon_lengths)[0], np.where(exon_lengths <= up_b)[0])
 
                 pdb.set_trace()
 
