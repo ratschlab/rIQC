@@ -97,7 +97,7 @@ def __get_counts_of_marginal_exons(exon_t_gene, data):
     return my_counts
 
 
-def get_scaling_factors(dir_out, exon_t_gene, my_counts, header, nmb_bins=10,
+def get_scaling_factors(exon_t_gene, my_counts, nmb_bins=10,
                           doPseudo=True, relativeBinning=True, averageFactors=False):
     #MM for binning
     exon_lengths = exon_t_gene[:, 4].astype(float)
@@ -107,8 +107,6 @@ def get_scaling_factors(dir_out, exon_t_gene, my_counts, header, nmb_bins=10,
     scale = sp.zeros((my_counts.shape[0], my_counts.shape[1]))
     #MM average scales with interval and #genes that contribute
     avg_scale = sp.zeros((my_counts.shape[1], nmb_bins, 4))
-
-    sp.savetxt(dir_out + "/scalingFactors_header.tsv", header, delimiter="\t", fmt="%s")
 
     #MM for every file that was read in
     for i in xrange(my_counts.shape[1]):
@@ -155,11 +153,10 @@ def get_scaling_factors(dir_out, exon_t_gene, my_counts, header, nmb_bins=10,
                 assert comb_idx.shape[0] == 0
             avg_scale[i, j, 1] = comb_idx.shape[0]
 
-        header = np.array([['scaling_factor_for_genes_with_length', 'number_of_genes_with_length', 'length_lower_bound', 'length_upper_bound']])
-        assert header.shape[1] == avg_scale.shape[2]
-        sp.savetxt(dir_out + "/scalingFactors_" + str(i) + ".tsv", np.concatenate((header, avg_scale[i, :, :])), delimiter="\t", fmt="%s")
-        np.save(dir_out + "/scalingFactors_" + str(i) + ".npy", avg_scale[i, :, :])
+        description = np.array([['scaling_factor_for_genes_with_length', 'number_of_genes_with_length', 'length_lower_bound', 'length_upper_bound']])
+        assert description.shape[1] == avg_scale.shape[2]
 
+        return description, avg_scale
 
 def main():
     # Parse options
@@ -260,7 +257,7 @@ def main():
 
         ### normalize counts by exon length
         logging.info("Normalize counts by exon length")
-        if (options.qMode == 'raw'):
+        if options.qMode == 'raw':
             exonl = sp.array([int(x.split(':')[1].split('-')[1]) -
                               int(x.split(':')[1].split('-')[0]) + 1 for x in exon_t_gene[:, :2].ravel('C')],
                              dtype='float') / 1000.
@@ -269,8 +266,12 @@ def main():
         # get counts from both ends
         my_counts = __get_counts_of_marginal_exons(exon_t_gene, data)
 
-    get_scaling_factors(options.dir_out, exon_t_gene, my_counts, header, options.nmb_bins,
-                        options.doPseudo, options.relativeBinning, options.averageFactors)
+    description, avg_scale = get_scaling_factors(exon_t_gene, my_counts, options.nmb_bins,
+                                                 options.doPseudo, options.relativeBinning, options.averageFactors)
+    sp.savetxt(options.dir_out + "/scalingFactors_header.tsv", header, delimiter="\t", fmt="%s")
+    for i in xrange(my_counts.shape[1]):
+        sp.savetxt(options.dir_out + "/scalingFactors_" + str(i) + ".tsv", np.concatenate((description, avg_scale[i, :, :])), delimiter="\t", fmt="%s")
+        np.save(options.dir_out + "/scalingFactors_" + str(i) + ".npy", avg_scale[i, :, :])
 
 
 if __name__ == "__main__":
