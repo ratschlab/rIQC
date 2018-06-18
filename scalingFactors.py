@@ -109,7 +109,7 @@ def get_scaling_factors(exon_t_gene, my_counts, nmb_bins=10,
     avg_scale = sp.zeros((my_counts.shape[1], nmb_bins, 4))
 
     #MM for every file that was read in
-    for i in xrange(my_counts.shape[1]):
+    for i in range(my_counts.shape[1]):
         #MM only take genes that have some count
         #MM i_ok is a boolean np.ndarray as long as number of genes
         if doPseudo:
@@ -143,6 +143,8 @@ def get_scaling_factors(exon_t_gene, my_counts, nmb_bins=10,
 
             # indices of genes that have right length and a scale factor
             comb_idx = sp.intersect1d(i_ok, idx_l)
+            
+            pdb.set_trace()
 
             if comb_idx.shape[0] != 0 and averageFactors:
                 avg_scale[i, j, 0] = sp.sum(scale[comb_idx, i]) / comb_idx.shape[0]
@@ -153,10 +155,10 @@ def get_scaling_factors(exon_t_gene, my_counts, nmb_bins=10,
                 assert comb_idx.shape[0] == 0
             avg_scale[i, j, 1] = comb_idx.shape[0]
 
-        description = np.array([['scaling_factor_for_genes_with_length', 'number_of_genes_with_length', 'length_lower_bound', 'length_upper_bound']])
-        assert description.shape[1] == avg_scale.shape[2]
+      description = np.array([['scaling_factor_for_genes_with_length', 'number_of_genes_with_length', 'length_lower_bound', 'length_upper_bound']])
+      assert description.shape[1] == avg_scale.shape[2]
 
-        return description, avg_scale
+      return description, avg_scale
 
 def main():
     # Parse options
