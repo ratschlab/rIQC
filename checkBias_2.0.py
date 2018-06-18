@@ -65,6 +65,8 @@ def parse_options(argv):
     opt_gen.add_option('', '--save_counts_ON',  dest='saveCounts', action='store_true', help='Store the exon counts in .npy and .tsv files for later use', default=False)
     opt_gen.add_option('', '--scale_counts_ON', dest='scaleCounts', action='store_true', help='Scale counts with pre-computed scaling factors for degradation compensation', default=False)
 
+    opt_gen.add_option('', '--scale_mode', dest='scaleMode', metavar='STRING', help='How to scale counts [first, last, pseudoFirst]', default='first')
+
     opt_gen.add_option('', '--legacy', dest='legacy', action="store_true", help='Switch on some legacy behavior', default=False)
     opt_gen.add_option('', '--plot',   dest='doPlot', action="store_true", help='Plot figures', default=False)
     
@@ -228,11 +230,20 @@ def main():
                 scaling_factors = np.load(options.dir_scale_factors + "/scalingFactors_" + str(i) + ".npy")
                 #MM j corresponds to number of bins
                 for j in xrange(scaling_factors.shape[1]):
-                    low_b = scaling_factors[2]
-                    up_b = scaling_factors[3]
+                    low_b = scaling_factors[j, 2]
+                    up_b = scaling_factors[j, 3]
                     factor = scaling_factors[j, 0]
                     i_ok = np.where(low_b < exon_t_gene[:, 4] <= up_b)
-                    my_counts[i_ok, i, 0] = my_counts[i_ok, i, 0] * factor
+                    if options.scaleMode == 'first':
+                        my_counts[i_ok, i, 0] = my_counts[i_ok, i, 0] * factor
+                    elif options.scaleMode == 'last':
+                        if factor != 0:
+                            my_counts[i_ok, i, 1] = my_counts[i_ok, i, 1] / factor
+                    else:
+                        assert options.scaleMode == 'pseudoFirst'
+                        my_counts[i_ok, i, :] = my_counts[i_ok, i, :] + 1
+                        my_counts[i_ok, i, 0] = my_counts[i_ok, i, 0] * factor
+
         else:
             get_scaling_factors(options.dir_out, exon_t_gene, my_counts, header)
 
