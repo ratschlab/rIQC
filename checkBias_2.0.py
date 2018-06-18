@@ -93,7 +93,7 @@ def parse_options(argv):
     if options.dir_fastq != '-' and options.fn_genome == '-':
         print >> sys.stderr, 'For usage on fastq files a genome file in fasta needs to be provided via -G/--genome'
         sys.exit(2)
-    if options.dir_scale_factors != '-' and options.scaleCounts:
+    if options.dir_scale_factors == '-' and options.scaleCounts:
         print 'CAVEAT: You have not provided pre-computed scaling factors ' \
               '--> they will be computed on the fly using default settings (see scalingFactors.py)'
     return options
