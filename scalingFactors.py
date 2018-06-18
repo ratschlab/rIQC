@@ -268,10 +268,10 @@ def main():
 
     description, avg_scale = get_scaling_factors(exon_t_gene, my_counts, options.nmb_bins,
                                                  options.doPseudo, options.relativeBinning, options.averageFactors)
+    np.save(options.dir_out + "/scalingFactors.npy", avg_scale)
     sp.savetxt(options.dir_out + "/scalingFactors_header.tsv", header, delimiter="\t", fmt="%s")
     for i in xrange(my_counts.shape[1]):
         sp.savetxt(options.dir_out + "/scalingFactors_" + str(i) + ".tsv", np.concatenate((description, avg_scale[i, :, :])), delimiter="\t", fmt="%s")
-        np.save(options.dir_out + "/scalingFactors_" + str(i) + ".npy", avg_scale[i, :, :])
 
 
 if __name__ == "__main__":
