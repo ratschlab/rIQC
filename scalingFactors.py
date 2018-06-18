@@ -155,10 +155,11 @@ def get_scaling_factors(exon_t_gene, my_counts, nmb_bins=10,
                 assert comb_idx.shape[0] == 0
             avg_scale[i, j, 1] = comb_idx.shape[0]
 
-      description = np.array([['scaling_factor_for_genes_with_length', 'number_of_genes_with_length', 'length_lower_bound', 'length_upper_bound']])
-      assert description.shape[1] == avg_scale.shape[2]
+    description = np.array([['scaling_factor_for_genes_with_length', 'number_of_genes_with_length', 'length_lower_bound', 'length_upper_bound']])
+    assert description.shape[1] == avg_scale.shape[2]
 
-      return description, avg_scale
+    return description, avg_scale
+
 
 def main():
     # Parse options
