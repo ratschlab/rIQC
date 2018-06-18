@@ -225,18 +225,16 @@ def main():
                 sp.savetxt(options.dir_out + '/counts_' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
 
     if options.scaleCounts:
-        if not (os.path.exists(options.dir_scale_factors + "/scalingFactors_" + str(j) + ".npy") for j in range(my_counts.shape[1])):
-            description, avg_scale = get_scaling_factors(exon_t_gene, my_counts)
+        if not (os.path.exists(options.dir_scale_factors + "/scalingFactors.npy")):
+            description, scaling_factors = get_scaling_factors(exon_t_gene, my_counts)
+        else:
+            scaling_factors = np.load(options.dir_scale_factors + "/scalingFactors.npy")
         for i in xrange(my_counts.shape[1]):
-            if (os.path.exists(options.dir_scale_factors + "/scalingFactors_" + str(j) + ".npy") for j in range(my_counts.shape[1])):
-                scaling_factors = np.load(options.dir_scale_factors + "/scalingFactors_" + str(i) + ".npy")
-            else:
-                scaling_factors = avg_scale[i, :, :]
             # MM j corresponds to number of bins
             for j in xrange(scaling_factors.shape[1]):
-                low_b = scaling_factors[j, 2]
-                up_b = scaling_factors[j, 3]
-                factor = scaling_factors[j, 0]
+                low_b = scaling_factors[i, j, 2]
+                up_b = scaling_factors[i, j, 3]
+                factor = scaling_factors[i, j, 0]
                 i_ok = np.where(low_b < exon_t_gene[:, 4] <= up_b)
 
                 pdb.set_trace()
