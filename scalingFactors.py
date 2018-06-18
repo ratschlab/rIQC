@@ -117,10 +117,8 @@ def get_scaling_factors(dir_out, exon_t_gene, my_counts, header, nmb_bins=10,
         if doPseudo:
             i_ok = sp.union1d(np.where(my_counts[:, i, 0] > 0)[0],
                               np.where(my_counts[:, i, 1] > 0)[0])
-            # MM replace 0 with 1 to avoid division by 0
-            i_avoid0 = np.where(my_counts[:, i, 0] == 0)[0]
-            my_counts[i_avoid0, i, 0] = 1
-            my_counts[i_avoid0, i, 1] = my_counts[i_avoid0, i, 1] + 1
+            # MM add pseudocount to avoid division by 0
+            my_counts[i_ok, i, :] = my_counts[i_ok, i, :] + 1
         else:
             i_ok = sp.intersect1d(np.where(my_counts[:, i, 0] > 0)[0],
                                   np.where(my_counts[:, i, 1] > 0)[0])
@@ -150,13 +148,12 @@ def get_scaling_factors(dir_out, exon_t_gene, my_counts, header, nmb_bins=10,
 
             if comb_idx.shape[0] != 0 and averageFactors:
                 avg_scale[i, j, 0] = sp.sum(scale[comb_idx, i]) / comb_idx.shape[0]
-                avg_scale[i, j, 1] = comb_idx.shape[0]
-            elif comb_idx.shape[0] != 0: # Take median
+            elif comb_idx.shape[0] != 0:  # Take median
                 avg_scale[i, j, 0] = sp.percentile(scale[comb_idx, i], 50)
-                avg_scale[i, j, 1] = comb_idx.shape[0]
             else:
                 avg_scale[i, j, 0] = 0
-                avg_scale[i, j, 1] = comb_idx.shape[0]
+                assert comb_idx.shape[0] == 0
+            avg_scale[i, j, 1] = comb_idx.shape[0]
 
         header = np.array([['scaling_factor_for_genes_with_length', 'number_of_genes_with_length', 'length_lower_bound', 'length_upper_bound']])
         assert header.shape[1] == avg_scale.shape[2]
