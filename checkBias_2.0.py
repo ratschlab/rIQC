@@ -225,29 +225,33 @@ def main():
                 sp.savetxt(options.dir_out + '/counts_' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
 
     if options.scaleCounts:
-        if (os.path.exists(options.dir_scale_factors + "/scalingFactors_" + str(j) + ".npy") for j in range(my_counts.shape[1])):
-            for i in xrange(my_counts.shape[1]):
+        if not (os.path.exists(options.dir_scale_factors + "/scalingFactors_" + str(j) + ".npy") for j in range(my_counts.shape[1])):
+            description, avg_scale = get_scaling_factors(exon_t_gene, my_counts)
+        for i in xrange(my_counts.shape[1]):
+            if (os.path.exists(options.dir_scale_factors + "/scalingFactors_" + str(j) + ".npy") for j in range(my_counts.shape[1])):
                 scaling_factors = np.load(options.dir_scale_factors + "/scalingFactors_" + str(i) + ".npy")
-                #MM j corresponds to number of bins
-                for j in xrange(scaling_factors.shape[1]):
-                    low_b = scaling_factors[j, 2]
-                    up_b = scaling_factors[j, 3]
-                    factor = scaling_factors[j, 0]
-                    i_ok = np.where(low_b < exon_t_gene[:, 4] <= up_b)
-                    if options.scaleMode == 'first':
-                        my_counts[i_ok, i, 0] = my_counts[i_ok, i, 0] * factor
-                    elif options.scaleMode == 'last':
-                        if factor != 0:
-                            my_counts[i_ok, i, 1] = my_counts[i_ok, i, 1] / factor
-                    else:
-                        assert options.scaleMode == 'pseudoFirst'
-                        my_counts[i_ok, i, :] = my_counts[i_ok, i, :] + 1
-                        my_counts[i_ok, i, 0] = my_counts[i_ok, i, 0] * factor
+            else:
+                scaling_factors = avg_scale[i, :, :]
+            # MM j corresponds to number of bins
+            for j in xrange(scaling_factors.shape[1]):
+                low_b = scaling_factors[j, 2]
+                up_b = scaling_factors[j, 3]
+                factor = scaling_factors[j, 0]
+                i_ok = np.where(low_b < exon_t_gene[:, 4] <= up_b)
 
-        else:
-            get_scaling_factors(options.dir_out, exon_t_gene, my_counts, header)
+                pdb.set_trace()
 
-        #MM Save scaled counts for experimental purposes - can be removed later
+                if options.scaleMode == 'first':
+                    my_counts[i_ok, i, 0] = my_counts[i_ok, i, 0] * factor
+                elif options.scaleMode == 'last':
+                    if factor != 0:
+                        my_counts[i_ok, i, 1] = my_counts[i_ok, i, 1] / factor
+                else:
+                    assert options.scaleMode == 'pseudoFirst'
+                    my_counts[i_ok, i, :] = my_counts[i_ok, i, :] + 1
+                    my_counts[i_ok, i, 0] = my_counts[i_ok, i, 0] * factor
+
+        # MM Save scaled counts for experimental purposes - can be removed later
         sp.savetxt(options.dir_out + "/scaledCounts_header.tsv", header, delimiter="\t", fmt="%s")
         for i in xrange(my_counts.shape[1]):
             exon_table = np.column_stack((exon_t_gene[:, :], my_counts[:, i, :]))
