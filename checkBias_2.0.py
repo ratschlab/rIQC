@@ -229,13 +229,14 @@ def main():
             description, scaling_factors = get_scaling_factors(exon_t_gene, my_counts)
         else:
             scaling_factors = np.load(options.dir_scale_factors + "/scalingFactors.npy")
+        exon_lengths = exon_t_gene[:, 4].astype(float)
         for i in xrange(my_counts.shape[1]):
             # MM j corresponds to number of bins
             for j in xrange(scaling_factors.shape[1]):
                 low_b = scaling_factors[i, j, 2]
                 up_b = scaling_factors[i, j, 3]
                 factor = scaling_factors[i, j, 0]
-                i_ok = np.where(low_b < exon_t_gene[:, 4] <= up_b)
+                i_ok = np.where(low_b < exon_lengths <= up_b)
 
                 pdb.set_trace()
 
