@@ -70,9 +70,9 @@ def get_annotation_table(fn_genes, fn_anno_tmp, fn_anno, proteinCodingFilter, le
             exon_t_gene = sp.loadtxt(fn_anno_tmp, delimiter='\t', dtype='string')
         else:
             if fn_anno.lower().endswith('gff') or fn_anno.lower().endswith('gff3'):
-                exon_t_gene = __read_annotation_file(fn_anno, proteinCodingFilter, format='gff', legacy=legacy)
+                exon_t_gene = __read_annotation_file(fn_anno, proteinCodingFilter, file_format='gff', legacy=legacy)
             elif fn_anno.lower().endswith('gtf'):
-                exon_t_gene = __read_annotation_file(fn_anno, proteinCodingFilter, format='gtf', legacy=legacy)
+                exon_t_gene = __read_annotation_file(fn_anno, proteinCodingFilter, file_format='gtf', legacy=legacy)
             else:
                 raise Exception(
                     "Only annotation files in formats: gff and gtf are supported. File name must end accordingly")
@@ -357,12 +357,12 @@ def __process_multi_transcript_genes(tcrpts, legacy=False):
     return [firstEx, lastEx, tcrpts[0].split(':')[0], tcrpts[0].split(':')[2], str(sp.median(myExStrucL))]
 
 
-def __read_annotation_file(fn, protein_coding_filter, format, legacy=False):
+def __read_annotation_file(fn, protein_coding_filter, file_format, legacy=False):
     # get list of overlapping genes
-    overlapgenes = __get_overlap_genes(fn, format)
+    overlapgenes = __get_overlap_genes(fn, file_format)
 
     # reading annotation file in
-    data = __reading_anno(fn, overlapgenes, protein_coding_filter, format)
+    data = __reading_anno(fn, overlapgenes, protein_coding_filter, file_format)
 
     uq_g_id = data.keys()  # unique gene ids
     new_data = []
