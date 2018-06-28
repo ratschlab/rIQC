@@ -238,8 +238,6 @@ def main():
                 factor = scaling_factors[i, j, 0]
                 i_ok = sp.intersect1d(np.where(low_b < exon_lengths)[0], np.where(exon_lengths <= up_b)[0])
 
-                pdb.set_trace()
-
                 if options.scaleMode == 'first':
                     my_counts[i_ok, i, 0] = my_counts[i_ok, i, 0] * factor
                 elif options.scaleMode == 'last':

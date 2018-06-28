@@ -144,7 +144,6 @@ def get_scaling_factors(exon_t_gene, my_counts, nmb_bins=10,
             # indices of genes that have right length and a scale factor
             comb_idx = sp.intersect1d(i_ok, idx_l)
             
-            pdb.set_trace()
 
             if comb_idx.shape[0] != 0 and averageFactors:
                 avg_scale[i, j, 0] = sp.sum(scale[comb_idx, i]) / comb_idx.shape[0]
