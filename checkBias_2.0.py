@@ -185,7 +185,11 @@ def main():
             else:
                 header = ','.join(fastq_list)
 
-            data = get_counts_from_multiple_fastq(fastq_list, kmers1, kmers2, options)
+            data = get_counts_from_multiple_fastq(fastq_list, kmers1, kmers2,
+                                                  options.separateFiles,
+                                                  options.kmerThresh,
+                                                  options.k,
+                                                  options.step_k)
 
         elif options.dir_bam != '-':
             if options.sparseBam:
