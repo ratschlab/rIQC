@@ -249,7 +249,7 @@ def main():
                                                 sp.intersect1d(np.where(my_counts[:, i, 0] > 0)[0],
                                                                np.where(my_counts[:, i, 1] > 0)[0]))
                     my_counts[i_ok, i, :] = my_counts[i_ok, i, :] + 1
-                    my_counts[i_ok_scale, i, 0] = my_counts[i_ok, i, 0] * factor
+                    my_counts[i_ok_scale, i, 0] = my_counts[i_ok_scale, i, 0] * factor
 
         # MM Save scaled counts for experimental purposes - can be removed later
         sp.savetxt(options.dir_out + "/scaledCounts_header.tsv", header, delimiter="\t", fmt="%s")
