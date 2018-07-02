@@ -151,24 +151,24 @@ def clean_kmers(kmers1, kmers2, fn_pickle_all, fn_pickle_filt, k, fn_genome):
     return (kmers1, kmers2)
 
 
-def get_counts_from_multiple_fastq(fn_fastq, kmers1, kmers2, options):
+def get_counts_from_multiple_fastq(fn_fastq, kmers1, kmers2, separateFiles, kmerThresh, k, step_k):
     """ This is a wrapper to concatenate counts for a given list of fastq
         files"""
 
-    if not options.separate_files:
-        return __get_counts_from_single_fastq(fn_fastq, kmers1, kmers2, options)[:, sp.newaxis]
+    if not separateFiles:
+        return __get_counts_from_single_fastq(fn_fastq, kmers1, kmers2, kmerThresh, k, step_k)[:, sp.newaxis]
     else:
-        return sp.hstack([__get_counts_from_single_fastq(fn_fastq[i], kmers1, kmers2, options)[:, sp.newaxis] for i in
+        return sp.hstack([__get_counts_from_single_fastq(fn_fastq[i], kmers1, kmers2, kmerThresh, k, step_k)[:, sp.newaxis] for i in
                           range(len(fn_fastq))])
 
 
-def __get_counts_from_single_fastq(fn_fastqs, kmers1, kmers2, options):
+def __get_counts_from_single_fastq(fn_fastqs, kmers1, kmers2, kmerThresh, k, step_k):
 
     all_kmers1 = dict([[_, 0] for s in kmers1 for _ in s])
     all_kmers2 = dict([[_, 0] for s in kmers2 for _ in s])
 
     use_fraction = False
-    if options.kmer_thresh <= 1:
+    if kmerThresh <= 1:
         use_fraction = True
 
     for fn_fastq in fn_fastqs:
@@ -183,7 +183,7 @@ def __get_counts_from_single_fastq(fn_fastqs, kmers1, kmers2, options):
             if l % 4 != 1: #MM 4 is a fastq-file specific number
                 continue
             cnt += 1
-            if not use_fraction and cnt1 > options.kmer_thresh:
+            if not use_fraction and cnt1 > kmerThresh:
                 break
             if cnt % 10000 == 0:
                 sys.stdout.write('.')
@@ -191,31 +191,31 @@ def __get_counts_from_single_fastq(fn_fastqs, kmers1, kmers2, options):
                     sys.stdout.write(' processed %i reads - %i (%.2f%%) used for quantification\n' % (
                     cnt, cnt1, cnt1 / float(cnt) * 100))
                 sys.stdout.flush()
-            if use_fraction and npr.random() > options.kmer_thresh:
+            if use_fraction and npr.random() > kmerThresh:
                 continue
             sl = line.strip()
             slr = __reverse_complement(sl)
-            for s in range(0, len(sl) - options.k + 1, options.step_k):
+            for s in range(0, len(sl) - k + 1, step_k):
                 try:
-                    all_kmers1[sl[s:s + options.k]] += 1
+                    all_kmers1[sl[s:s + k]] += 1
                     cnt1 += 1
                     break
                 except KeyError:
                     pass
                 try:
-                    all_kmers1[slr[s:s + options.k]] += 1
+                    all_kmers1[slr[s:s + k]] += 1
                     cnt1 += 1
                     break
                 except KeyError:
                     pass
                 try:
-                    all_kmers2[sl[s:s + options.k]] += 1
+                    all_kmers2[sl[s:s + k]] += 1
                     cnt1 += 1
                     break
                 except KeyError:
                     pass
                 try:
-                    all_kmers2[slr[s:s + options.k]] += 1
+                    all_kmers2[slr[s:s + k]] += 1
                     cnt1 += 1
                     break
                 except KeyError:
