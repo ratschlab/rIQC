@@ -52,6 +52,8 @@ def parse_options(argv):
     opt_gen.add_option('', '--relative_binning_ON', dest='relativeBinning', action="store_true", help="Have relative (to number of genes) bin boundaries instead of absolute values", default=False)
     opt_gen.add_option('', '--average_factors_ON', dest='averageFactors', action='store_true', help="Compute factors by using average (instead of median)", default=False)
 
+    opt_gen.add_option('', '--legacy', dest='legacy', action="store_true", help='Switch on some legacy behavior', default=False)
+
     opt_kmer = OptionGroup(parser, 'Options for k-mer counting')
 
     opt_kmer.add_option('', '--kmer_length', dest='k', type='int', help='Length of k-mer for alignmentfree counting', default=27)
@@ -202,8 +204,7 @@ def main():
             options.proteinCodingFilter,
             options.lengthFilter,
             options.readLength,
-            False #legacy attribute
-            )
+            options.legacy)
 
         if options.dir_fastq != '-':
             if options.fn_pickle_filt is not None \
