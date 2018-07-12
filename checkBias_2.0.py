@@ -250,9 +250,7 @@ def main():
                         my_counts[i_ok, i, 1] = my_counts[i_ok, i, 1] / factor
                 else:
                     assert options.scaleMode == 'pseudoFirst'
-                    i_ok_scale = sp.intersect1d(i_ok,
-                                                sp.intersect1d(np.where(my_counts[:, i, 0] > 0)[0],
-                                                               np.where(my_counts[:, i, 1] > 0)[0]))
+                    i_ok_scale = sp.intersect1d(i_ok, np.where(my_counts[:, i, 1] > 0)[0])
                     my_counts[i_ok, i, :] = my_counts[i_ok, i, :] + 1
                     my_counts[i_ok_scale, i, 0] = my_counts[i_ok_scale, i, 0] * factor
 
