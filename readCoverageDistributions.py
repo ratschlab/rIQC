@@ -1,9 +1,7 @@
 import os
 import sys
 import glob
-import warnings
 from optparse import OptionParser, OptionGroup
-import scipy as sp
 import scipy.stats as spst
 import pysam
 import time
@@ -173,22 +171,21 @@ def reading_anno(fn_anno, overlap_genes, protein_coding_filter):
             continue
         l_spl = l.strip('\n').split('\t')
 
-        if format == 'gtf':
-            if l_spl[FEATURE].lower() != 'transcript':
-                continue
-            tags = dict()
-            for t in l_spl[ATTRIBUTE].strip(';').split(';'):
-                tt = t.strip(' ').split(' ')
-                tags[tt[0]] = tt[1].strip('"')
+        if l_spl[FEATURE].lower() != 'transcript':
+            continue
+        tags = dict()
+        for t in l_spl[ATTRIBUTE].strip(';').split(';'):
+            tt = t.strip(' ').split(' ')
+            tags[tt[0]] = tt[1].strip('"')
 
-            key = tags['gene_id']
-            gene_type = tags['gene_type']
-            if key in overlap_genes:
-                continue
+        key = tags['gene_id']
+        gene_type = tags['gene_type']
+        if key in overlap_genes:
+            continue
 
-            if protein_coding_filter and (gene_type != "protein_coding"):
-                continue
-            value = '%s:%s:%s' % (l_spl[SEQ_NAME], ','.join(transcripts[tags['transcript_id']]), l_spl[STRAND])
+        if protein_coding_filter and (gene_type != "protein_coding"):
+            continue
+        value = '%s:%s:%s' % (l_spl[SEQ_NAME], ','.join(transcripts[tags['transcript_id']]), l_spl[STRAND])
 
         try:
             data[key].append(value)
