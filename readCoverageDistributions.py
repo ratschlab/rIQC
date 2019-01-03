@@ -239,9 +239,11 @@ def process_single_transcript_genes(tcrpt):
     # reformat to somewhat convenient reading
     # format # ID : exon1_positions,exon2_positions,...,exonN_positions : STRAND
 
-    first_ex = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[0] + ':' + tcrpt.split(':')[2]
-    last_ex = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[-1] + ':' + tcrpt.split(':')[2]
-    return [first_ex, last_ex, tcrpt.split(':')[0], tcrpt.split(':')[2], get_transcript_length(tcrpt)]
+    exons = tcrpt.split(':')[1].split(',')
+
+    # first_ex = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[0] + ':' + tcrpt.split(':')[2]
+    # last_ex = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[-1] + ':' + tcrpt.split(':')[2]
+    return [exons, tcrpt.split(':')[0], tcrpt.split(':')[2], get_transcript_length(tcrpt)]
 
 
 def process_multi_transcript_genes(tcrpt):
@@ -281,9 +283,9 @@ def process_multi_transcript_genes(tcrpt):
     for i, rec in enumerate(tcrpt):
         my_ex_struct_l.append(get_transcript_length(rec))
 
-    first_ex = tcrpt[0].split(':')[0] + ':' + first_ex + ':' + tcrpt[0].split(':')[2]
-    last_ex = tcrpt[0].split(':')[0] + ':' + last_ex + ':' + tcrpt[0].split(':')[2]
-    return [first_ex, last_ex, tcrpt[0].split(':')[0], tcrpt[0].split(':')[2], str(sp.median(my_ex_struct_l))]
+    # first_ex = tcrpt[0].split(':')[0] + ':' + first_ex + ':' + tcrpt[0].split(':')[2]
+    # last_ex = tcrpt[0].split(':')[0] + ':' + last_ex + ':' + tcrpt[0].split(':')[2]
+    return [uq_const_ex, tcrpt[0].split(':')[0], tcrpt[0].split(':')[2], str(sp.median(my_ex_struct_l))]
 
 
 def read_annotation_file(fn_anno, protein_coding_filter):
@@ -430,12 +432,17 @@ def parse_options(argv):
 
 def main():
     options = parse_options(sys.argv)
-    exon_t_gene = get_annotation_table(options.fn_anno, options.proteinCodingFilter)
+    if os.path.exists("./anno.tmp"):
+        exon_t_gene = sp.loadtxt("./anno.tmp", delimiter='\t', dtype='string')
+    else:
+        exon_t_gene = get_annotation_table(options.fn_anno, options.proteinCodingFilter)
+        sp.savetxt("./anno.tmp", exon_t_gene, delimiter='\t', fmt='%s')
 
     if options.dir_bam != '-':
         file_names = glob.glob(os.path.join(options.dir_bam, '*.bam'))
         data = get_counts_from_multiple_bam(file_names, exon_t_gene)
-    elif options.fn_bam != '-':
+    else:
+        assert options.fn_bam != '-'
         file_names = [options.fn_bam]
         data = get_counts_from_multiple_bam(file_names, exon_t_gene)
 
