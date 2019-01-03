@@ -198,7 +198,7 @@ def reading_anno(fn_anno, overlap_genes, protein_coding_filter):
         if key in overlap_genes:
             continue
         # remove non-chr-contigs
-        if l_spl[SEQ_NAME].lower() in chr_whitelist:
+        if l_spl[SEQ_NAME].lower() not in chr_whitelist:
             continue
         # filter for protein-coding genes only (if filter turned on)
         if protein_coding_filter and (gene_type != "protein_coding"):
@@ -309,8 +309,6 @@ def read_annotation_file(fn_anno, protein_coding_filter):
             temp.extend([gid])
             new_data.append(temp)
     new_data = sp.array(new_data)
-    print new_data.shape
-    print new_data[0:5,:]
     s_idx = sp.argsort(new_data[:, 5])
     new_data = new_data[s_idx, :]
     # filter gene with no name
