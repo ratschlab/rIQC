@@ -5,6 +5,7 @@ from optparse import OptionParser, OptionGroup
 import pysam
 import time
 import numpy as np
+import scipy as sp
 from libs.usefulTools import *
 
 # Some Numbers
@@ -250,9 +251,7 @@ def process_multi_transcript_genes(tcrpt):
         return None
 
     # make matrix of transcript struct and length
-    import pdb
-    pdb.set_trace()
-    my_exons = [t.split(':')[1].split(',') for t in tcrpt]
+    my_exons = [x.split(':')[1].split(',') for x in tcrpt]
     # unravel exons into one list of exons
     my_exons = sp.array([reduce(lambda x, y: x + y, my_exons)]).ravel()
     my_exons_int = sp.array([x.split('-') for x in my_exons]).astype('int')
@@ -310,6 +309,8 @@ def read_annotation_file(fn_anno, protein_coding_filter):
             temp.extend([gid])
             new_data.append(temp)
     new_data = sp.array(new_data)
+    print new_data.shape
+    print new_data[0:5,:]
     s_idx = sp.argsort(new_data[:, 5])
     new_data = new_data[s_idx, :]
     # filter gene with no name
