@@ -1,12 +1,10 @@
 import os
-import pdb
 import sys
 import glob
 from optparse import OptionParser, OptionGroup
 import pysam
 import time
 import numpy as np
-import scipy
 from libs.usefulTools import *
 
 # Some Numbers
@@ -53,7 +51,7 @@ def last_const_exon_pos():
 
 
 def get_counts_from_marginal_exons(exon_t_gene, data):
-    my_counts = scipy.zeros((exon_t_gene.shape[0], data.shape[1], 2))
+    my_counts = sp.zeros((exon_t_gene.shape[0], data.shape[1], 2))
 
     for i, rec in enumerate(exon_t_gene):
 
@@ -89,13 +87,13 @@ def get_overlap_genes(fn_anno):
             tags[tt[0]] = tt[1].strip('"')
         data.append([tags['gene_id'], '%s:%s-%s' % (l_spl[SEQ_NAME], l_spl[START], l_spl[END])])
 
-    data = scipy.array(data)
+    data = sp.array(data)
 
     # fix positions
     pos = data[:, 1]
-    pos = scipy.array([x.split(':')[0] + '-' + x.split(':')[1] for x in pos])
-    pos = scipy.array([x.strip('chr') for x in pos])
-    pos = scipy.array([x.split('-') for x in pos])
+    pos = sp.array([x.split(':')[0] + '-' + x.split(':')[1] for x in pos])
+    pos = sp.array([x.strip('chr') for x in pos])
+    pos = sp.array([x.split('-') for x in pos])
     pos[pos[:, 0] == 'X', 0] = '23'
     pos[pos[:, 0] == 'Y', 0] = '24'
 
@@ -106,7 +104,7 @@ def get_overlap_genes(fn_anno):
     pos = pos.astype('int')
 
     # sort everything nicely
-    sidx = scipy.lexsort((pos[:, 2], pos[:, 1], pos[:, 0]))
+    sidx = sp.lexsort((pos[:, 2], pos[:, 1], pos[:, 0]))
     pos = pos[sidx, :]
     data = data[sidx, :]
 
@@ -127,24 +125,24 @@ def get_overlap_genes(fn_anno):
         i_ub_st = my_pos[1] >= pos[:, 1]
 
         # on both ends the only entry that overlaps to i is i itself --> continue
-        if (scipy.sum(i_chr & i_lb_end & i_ub_end) == 1) and (scipy.sum(i_chr & i_lb_st & i_ub_st) == 1):
+        if (sp.sum(i_chr & i_lb_end & i_ub_end) == 1) and (sp.sum(i_chr & i_lb_st & i_ub_st) == 1):
             continue
 
         # extract IDs of overlapping genes
         overlap_genes_st = data[i_chr & i_ub_st & i_lb_st, 0]
         overlap_genes_end = data[i_chr & i_ub_end & i_lb_end, 0]
 
-        overlap_genes_st = scipy.array([x.split('|')[0] for x in overlap_genes_st])
-        overlap_genes_end = scipy.array([x.split('|')[0] for x in overlap_genes_end])
+        overlap_genes_st = sp.array([x.split('|')[0] for x in overlap_genes_st])
+        overlap_genes_end = sp.array([x.split('|')[0] for x in overlap_genes_end])
 
         # this should actually never happen ...
-        if (scipy.unique(overlap_genes_st).shape[0] == 1) and (scipy.unique(overlap_genes_end).shape[0] == 1):
+        if (sp.unique(overlap_genes_st).shape[0] == 1) and (sp.unique(overlap_genes_end).shape[0] == 1):
             continue
-        if scipy.unique(overlap_genes_st).shape[0] > 1:
+        if sp.unique(overlap_genes_st).shape[0] > 1:
             my_overlap_genes.extend(overlap_genes_st.tolist())
-        if scipy.unique(overlap_genes_end).shape[0] > 1:
+        if sp.unique(overlap_genes_end).shape[0] > 1:
             my_overlap_genes.extend(overlap_genes_end.tolist())
-    return scipy.unique(my_overlap_genes)
+    return sp.unique(my_overlap_genes)
 
 
 def reading_anno(fn_anno, overlap_genes, protein_coding_filter):
@@ -219,7 +217,7 @@ def get_transcript_length(rec):
     """
         Returns transcript length defined as sum of length of exons
     """
-    ex_pieces = scipy.array(rec.split(':')[1].split(','))
+    ex_pieces = sp.array(rec.split(':')[1].split(','))
     lgt = 0
 
     for i, x in enumerate(ex_pieces[0:]):
@@ -247,25 +245,26 @@ def process_single_transcript_genes(tcrpt):
 
 def process_multi_transcript_genes(tcrpt):
     # We only use transcript isoforms that have at least two exons
-    if scipy.sum(np.core.defchararray.find(tcrpt, ',') != -1) != len(tcrpt):
+    if sp.sum(np.core.defchararray.find(tcrpt, ',') != -1) != len(tcrpt):
         # TODO: so we not just exclude those transcripts but ignore genes where one or more transcripts have less than 2 exons?!
         return None
 
     # make matrix of transcript struct and length
+    import pdb
     pdb.set_trace()
-    my_exons = [x.split(':')[1].split(',') for x in tcrpt]
+    my_exons = [t.split(':')[1].split(',') for t in tcrpt]
     # unravel exons into one list of exons
-    my_exons = scipy.array([reduce(lambda x, y: x + y, my_exons)]).ravel()
-    my_exons_int = scipy.array([x.split('-') for x in my_exons]).astype('int')
+    my_exons = sp.array([reduce(lambda x, y: x + y, my_exons)]).ravel()
+    my_exons_int = sp.array([x.split('-') for x in my_exons]).astype('int')
 
     # sort this
-    sidx_int = scipy.lexsort((my_exons_int[:, 1], my_exons_int[:, 0]))
+    sidx_int = sp.lexsort((my_exons_int[:, 1], my_exons_int[:, 0]))
     my_exons = my_exons[sidx_int]
     my_exons_int = my_exons_int[sidx_int, :]
 
     # see how often we got each item
     dummy, u_idx, dists = unique_rows(my_exons_int, index=True, counts=True)
-    n_match = scipy.sum(dists == len(tcrpt))
+    n_match = sp.sum(dists == len(tcrpt))
 
     # make sure we have at least 3 constitutive exons
     if n_match < 3:
@@ -285,7 +284,7 @@ def process_multi_transcript_genes(tcrpt):
 
     first_ex = tcrpt[0].split(':')[0] + ':' + first_ex + ':' + tcrpt[0].split(':')[2]
     last_ex = tcrpt[0].split(':')[0] + ':' + last_ex + ':' + tcrpt[0].split(':')[2]
-    return [first_ex, last_ex, tcrpt[0].split(':')[0], tcrpt[0].split(':')[2], str(scipy.median(my_ex_struct_l))]
+    return [first_ex, last_ex, tcrpt[0].split(':')[0], tcrpt[0].split(':')[2], str(sp.median(my_ex_struct_l))]
 
 
 def read_annotation_file(fn_anno, protein_coding_filter):
@@ -310,11 +309,11 @@ def read_annotation_file(fn_anno, protein_coding_filter):
         else:
             temp.extend([gid])
             new_data.append(temp)
-    new_data = scipy.array(new_data)
-    s_idx = scipy.argsort(new_data[:, 5])
+    new_data = sp.array(new_data)
+    s_idx = sp.argsort(new_data[:, 5])
     new_data = new_data[s_idx, :]
     # filter gene with no name
-    return scipy.array(new_data)
+    return sp.array(new_data)
 
 
 def get_annotation_table(fn_anno, protein_coding_filter):
@@ -334,24 +333,24 @@ def get_counts_from_single_bam(fn_bam, regions):
 
     if not os.path.exists(fn_bam + '.bai'):
         warnings.warn('WARNING: alignment file %s seems not to be indexed and will be skipped! \n' % fn_bam)
-        dummy = scipy.zeros(regions.shape[0] * 2)
-        dummy[:] = scipy.nan
+        dummy = sp.zeros(regions.shape[0] * 2)
+        dummy[:] = sp.nan
         return dummy
     if not os.stat(fn_bam).st_size > 0:
         warnings.warn('WARNING: alignment file %s seems to be empty and will be skipped! \n' % fn_bam)
-        dummy = scipy.zeros(regions.shape[0] * 2)
-        dummy[:] = scipy.nan
+        dummy = sp.zeros(regions.shape[0] * 2)
+        dummy[:] = sp.nan
         return dummy
 
     bam_file = pysam.Samfile(fn_bam, 'rb')
     ref_seqs = bam_file.references
-    cnts = scipy.zeros((regions.shape[0], 2), dtype='float')
+    cnts = sp.zeros((regions.shape[0], 2), dtype='float')
     t0 = time.time()
 
     if len(regions.shape) > 1:
-        sidx = scipy.argsort(regions[:, 0])
+        sidx = sp.argsort(regions[:, 0])
     else:
-        sidx = scipy.argsort(regions)
+        sidx = sp.argsort(regions)
 
     for i, ii in enumerate(sidx):
         rec = regions[ii]
@@ -374,14 +373,14 @@ def get_counts_from_single_bam(fn_bam, regions):
             start2 = int(rec[1].split(':')[1].split('-')[0])
             end2 = int(rec[1].split(':')[1].split('-')[1])
         try:
-            cnt1 = int(scipy.ceil(scipy.sum(
-                [scipy.sum((scipy.array(read.positions) >= start1) & (scipy.array(read.positions) < end1)) for read in
+            cnt1 = int(sp.ceil(sp.sum(
+                [sp.sum((sp.array(read.positions) >= start1) & (sp.array(read.positions) < end1)) for read in
                  bam_file.fetch(chrm, start1, end1) if not read.is_secondary]) / 50.0))
             if start2 is None:
                 cnt2 = cnt1
             else:
-                cnt2 = int(scipy.ceil(scipy.sum(
-                    [scipy.sum((scipy.array(read.positions) >= start2) & (scipy.array(read.positions) < end2)) for read in
+                cnt2 = int(sp.ceil(sp.sum(
+                    [sp.sum((sp.array(read.positions) >= start2) & (sp.array(read.positions) < end2)) for read in
                      bam_file.fetch(chrm, start2, end2) if not read.is_secondary]) / 50.0))
         except ValueError:
             print >> sys.stderr, 'Ignored %s' % chrm
@@ -399,9 +398,9 @@ def get_counts_from_multiple_bam(fn_bams, regions):
         files"""
 
     if len(fn_bams) == 1:
-        return get_counts_from_single_bam(fn_bams[0], regions)[:, scipy.newaxis]
+        return get_counts_from_single_bam(fn_bams[0], regions)[:, sp.newaxis]
     else:
-        return scipy.hstack([get_counts_from_single_bam(fn_bams[i], regions)[:, scipy.newaxis] for i in range(len(fn_bams))])
+        return sp.hstack([get_counts_from_single_bam(fn_bams[i], regions)[:, sp.newaxis] for i in range(len(fn_bams))])
 
 
 def parse_options(argv):
@@ -423,7 +422,7 @@ def parse_options(argv):
     if len(argv) < 2:
         parser.print_help()
         sys.exit(2)
-    if scipy.sum(int(options.dir_bam != '-') + int(options.fn_bam != '-')) != 1:
+    if sp.sum(int(options.dir_bam != '-') + int(options.fn_bam != '-')) != 1:
         print "Please specify either bam file or directory"
         parser.print_help()
         sys.exit(2)
@@ -442,9 +441,9 @@ def main():
         data = get_counts_from_multiple_bam(file_names, exon_t_gene)
 
     # Normalize counts by exon length
-    exonl = scipy.array([int(x.split(':')[1].split('-')[1]) - int(x.split(':')[1].split('-')[0]) + 1 for x in exon_t_gene[:, :2].ravel('C')],
-                        dtype='float') / 1000.
-    data /= scipy.tile(exonl[:, scipy.newaxis], data.shape[1])
+    exon_l = sp.array([int(x.split(':')[1].split('-')[1]) - int(x.split(':')[1].split('-')[0]) + 1 for x in exon_t_gene[:, :2].ravel('C')],
+                      dtype='float') / 1000.
+    data /= sp.tile(exon_l[:, sp.newaxis], data.shape[1])
 
     # Get counts from first and last exon
     my_counts = get_counts_from_marginal_exons(exon_t_gene, data)
