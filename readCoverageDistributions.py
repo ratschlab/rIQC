@@ -349,10 +349,10 @@ def get_counts_from_single_bam(fn_bam, regions):
     t0 = time.time()
 
     if len(regions.shape) > 1:
-        sidx = sp.argsort(np.concatenate((regions[:, 1], regions[:, 0])))
+        sidx = sp.argsort(np.vstack((regions[:, 1], regions[:, 0])))
     else:
         print "Should not happen 1"
-        # sidx = sp.argsort(np.concatenate((regions[1], regions[0])))
+        # sidx = sp.argsort(np.vstack((regions[1], regions[0])))
 
     for i, ii in enumerate(sidx):
         rec = regions[ii]
