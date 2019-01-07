@@ -345,50 +345,48 @@ def get_counts_from_single_bam(fn_bam, regions):
 
     bam_file = pysam.Samfile(fn_bam, 'rb')
     ref_seqs = bam_file.references
-    cnts = sp.zeros((regions.shape[0], 2), dtype='float')
+    cnts = sp.zeros((regions.shape[0], 1), dtype='float')
     t0 = time.time()
 
     if len(regions.shape) > 1:
-        sidx = sp.argsort(regions[:, 0])
+        sidx = sp.argsort(np.concatenate((regions[:, 1], regions[:, 0])))
     else:
-        sidx = sp.argsort(regions)
+        print "Should not happen 1"
+        # sidx = sp.argsort(np.concatenate((regions[1], regions[0])))
 
     for i, ii in enumerate(sidx):
         rec = regions[ii]
+        exon_counts = []
         if i > 0 and i % 100 == 0:
             print '%i rounds to go. ETA %.0f seconds' % (regions.shape[0] - i, (time.time() - t0) / i * (regions.shape[0] - i))
         if len(regions.shape) == 1:
-            chrm = rec.split(':')[0]
-            if chrm not in ref_seqs:
-                chrm = chrm.strip('chr')
-            start1 = int(rec.split(':')[1].split('-')[0])
-            end1 = int(rec.split(':')[1].split('-')[1])
-            start2 = None
-            end2 = None
+            print "Should not happen 2"
+            # chrm = rec.split(':')[0]
+            # if chrm not in ref_seqs:
+            #     chrm = chrm.strip('chr')
+            # start1 = int(rec.split(':')[1].split('-')[0])
+            # end1 = int(rec.split(':')[1].split('-')[1])
+            # start2 = None
+            # end2 = None
         else:
-            chrm = rec[0].split(':')[0]
+            exons = rec[0].split(",")
+            chrm = rec[1]
             if chrm not in ref_seqs:
                 chrm = chrm.strip('chr')
-            start1 = int(rec[0].split(':')[1].split('-')[0])
-            end1 = int(rec[0].split(':')[1].split('-')[1])
-            start2 = int(rec[1].split(':')[1].split('-')[0])
-            end2 = int(rec[1].split(':')[1].split('-')[1])
-        try:
-            cnt1 = int(sp.ceil(sp.sum(
-                [sp.sum((sp.array(read.positions) >= start1) & (sp.array(read.positions) < end1)) for read in
-                 bam_file.fetch(chrm, start1, end1) if not read.is_secondary]) / 50.0))
-            if start2 is None:
-                cnt2 = cnt1
-            else:
-                cnt2 = int(sp.ceil(sp.sum(
-                    [sp.sum((sp.array(read.positions) >= start2) & (sp.array(read.positions) < end2)) for read in
-                     bam_file.fetch(chrm, start2, end2) if not read.is_secondary]) / 50.0))
-        except ValueError:
-            print >> sys.stderr, 'Ignored %s' % chrm
-            cnt1 = 1
-            cnt2 = 1
-        finally:
-            cnts[ii, :] = [cnt1, cnt2]
+            for e in exons:
+                start = int(e.split("-")[0])
+                end = int(e.split("-")[1])
+                try:
+                    cnt = int(sp.ceil(sp.sum(
+                        [sp.sum((sp.array(read.positions) >= start) & (sp.array(read.positions) < end)) for read in
+                         bam_file.fetch(chrm, start, end) if not read.is_secondary]) / 50.0))
+                except ValueError:
+                    print >> sys.stderr, 'Ignored %s' % chrm
+                    cnt = 1
+                finally:
+                    exon_counts.append(cnt)
+
+        cnts[ii, :] = exon_counts
     bam_file.close()
 
     return cnts.ravel('C')
@@ -440,11 +438,11 @@ def main():
 
     if options.dir_bam != '-':
         file_names = glob.glob(os.path.join(options.dir_bam, '*.bam'))
-        #data = get_counts_from_multiple_bam(file_names, exon_t_gene)
+        data = get_counts_from_multiple_bam(file_names, exon_t_gene)
     else:
         assert options.fn_bam != '-'
         file_names = [options.fn_bam]
-        #data = get_counts_from_multiple_bam(file_names, exon_t_gene)
+        data = get_counts_from_multiple_bam(file_names, exon_t_gene)
 
     # Normalize counts by exon length
     #exon_l = sp.array([int(x.split(':')[1].split('-')[1]) - int(x.split(':')[1].split('-')[0]) + 1 for x in exon_t_gene[:, :2].ravel('C')],
