@@ -243,7 +243,7 @@ def process_single_transcript_genes(tcrpt):
 
     # first_ex = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[0] + ':' + tcrpt.split(':')[2]
     # last_ex = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[-1] + ':' + tcrpt.split(':')[2]
-    return [exons, tcrpt.split(':')[0], tcrpt.split(':')[2], get_transcript_length(tcrpt)]
+    return [",".join(exons), tcrpt.split(':')[0], tcrpt.split(':')[2], get_transcript_length(tcrpt)]
 
 
 def process_multi_transcript_genes(tcrpt):
@@ -285,7 +285,7 @@ def process_multi_transcript_genes(tcrpt):
 
     # first_ex = tcrpt[0].split(':')[0] + ':' + first_ex + ':' + tcrpt[0].split(':')[2]
     # last_ex = tcrpt[0].split(':')[0] + ':' + last_ex + ':' + tcrpt[0].split(':')[2]
-    return [uq_const_ex, tcrpt[0].split(':')[0], tcrpt[0].split(':')[2], str(sp.median(my_ex_struct_l))]
+    return [",".join(uq_const_ex), tcrpt[0].split(':')[0], tcrpt[0].split(':')[2], str(sp.median(my_ex_struct_l))]
 
 
 def read_annotation_file(fn_anno, protein_coding_filter):
@@ -440,21 +440,18 @@ def main():
 
     if options.dir_bam != '-':
         file_names = glob.glob(os.path.join(options.dir_bam, '*.bam'))
-        data = get_counts_from_multiple_bam(file_names, exon_t_gene)
+        #data = get_counts_from_multiple_bam(file_names, exon_t_gene)
     else:
         assert options.fn_bam != '-'
         file_names = [options.fn_bam]
-        data = get_counts_from_multiple_bam(file_names, exon_t_gene)
+        #data = get_counts_from_multiple_bam(file_names, exon_t_gene)
 
     # Normalize counts by exon length
-    exon_l = sp.array([int(x.split(':')[1].split('-')[1]) - int(x.split(':')[1].split('-')[0]) + 1 for x in exon_t_gene[:, :2].ravel('C')],
-                      dtype='float') / 1000.
-    data /= sp.tile(exon_l[:, sp.newaxis], data.shape[1])
+    #exon_l = sp.array([int(x.split(':')[1].split('-')[1]) - int(x.split(':')[1].split('-')[0]) + 1 for x in exon_t_gene[:, :2].ravel('C')],
+    #                  dtype='float') / 1000.
+    #data /= sp.tile(exon_l[:, sp.newaxis], data.shape[1])
 
-    # Get counts from first and last exon
-    my_counts = get_counts_from_marginal_exons(exon_t_gene, data)
-
-    avg_count_per_exon()
+    #avg_count_per_exon()
 
 
 if __name__ == "__main__":
