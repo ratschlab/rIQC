@@ -311,7 +311,7 @@ def read_annotation_file(fn_anno, protein_coding_filter):
             temp.extend([gid])
             new_data.append(temp)
     new_data = sp.array(new_data)
-    s_idx = sp.argsort(new_data[:, 5])
+    s_idx = sp.argsort(new_data[:, -1])
     new_data = new_data[s_idx, :]
     # filter gene with no name
     return sp.array(new_data)
