@@ -348,8 +348,13 @@ def get_counts_from_single_bam(fn_bam, regions):
     cnts = sp.zeros((regions.shape[0], 1), dtype='float')
     t0 = time.time()
 
+    # To sort regions by chr and exon-position
+    sidx_array = []
+    for i in len(regions):
+        sidx_array.append(regions[i, 1] + regions[i, 0])
+
     if len(regions.shape) > 1:
-        sidx = sp.argsort(np.vstack((regions[:, 1], regions[:, 0])))
+        sidx = sp.argsort(sidx_array[:, 1])
     else:
         print "Should not happen 1"
         # sidx = sp.argsort(np.vstack((regions[1], regions[0])))
