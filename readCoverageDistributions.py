@@ -30,7 +30,7 @@ def avg_count_per_exon(counts, regions):
     (positions at the end have most likely less samples than at the beginning)
     NOT considering length of exons or length of gene, also different genes have last exon at different positions (different amounts of exons)
     """
-    print counts[0:5]
+
 
 
 # Expression distribution over normalized gene length (in different length-bins-> same as already used; constitutive and not)
@@ -345,7 +345,7 @@ def get_counts_from_single_bam(fn_bam, regions):
 
     bam_file = pysam.Samfile(fn_bam, 'rb')
     ref_seqs = bam_file.references
-    cnts = sp.zeros((regions.shape[0], 1), dtype='float')
+    cnts = np.empty([regions.shape[0]], dtype="string")
     t0 = time.time()
 
     # To sort regions by chr and exon-position
@@ -389,10 +389,10 @@ def get_counts_from_single_bam(fn_bam, regions):
                     print >> sys.stderr, 'Ignored %s' % chrm
                     cnt = 1
                 finally:
-                    print cnt
-                    exon_counts.append(cnt)
+                    exon_counts.append(str(cnt))
         print exon_counts
-        cnts[ii, :] = exon_counts
+        cnts[ii] = ",".join(exon_counts)
+        print cnts[ii]
     bam_file.close()
 
     return cnts.ravel('C')
