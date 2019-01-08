@@ -24,13 +24,13 @@ ATTRIBUTE = 8   # semicolon-separated list of tag-value pairs
 
 
 # Average count per exon (histogram) (depending on location); for both all exons and only constitutive ones
-def avg_count_per_exon():
+def avg_count_per_exon(counts, regions):
     """
     Plots one histogram for all genes: Average count of first, second, ..., last exon with variance as error metric
     (positions at the end have most likely less samples than at the beginning)
     NOT considering length of exons or length of gene, also different genes have last exon at different positions (different amounts of exons)
     """
-    print "Hi"
+    print counts[0:5]
 
 
 # Expression distribution over normalized gene length (in different length-bins-> same as already used; constitutive and not)
@@ -449,12 +449,12 @@ def main():
         file_names = [options.fn_bam]
         data = get_counts_from_multiple_bam(file_names, exon_t_gene)
 
+    avg_count_per_exon(data, exon_t_gene)
+
     # Normalize counts by exon length
     #exon_l = sp.array([int(x.split(':')[1].split('-')[1]) - int(x.split(':')[1].split('-')[0]) + 1 for x in exon_t_gene[:, :2].ravel('C')],
     #                  dtype='float') / 1000.
     #data /= sp.tile(exon_l[:, sp.newaxis], data.shape[1])
-
-    #avg_count_per_exon()
 
 
 if __name__ == "__main__":
