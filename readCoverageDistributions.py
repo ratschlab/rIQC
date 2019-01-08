@@ -389,8 +389,9 @@ def get_counts_from_single_bam(fn_bam, regions):
                     print >> sys.stderr, 'Ignored %s' % chrm
                     cnt = 1
                 finally:
+                    print cnt
                     exon_counts.append(cnt)
-
+        print exon_counts
         cnts[ii, :] = exon_counts
     bam_file.close()
 
