@@ -350,11 +350,11 @@ def get_counts_from_single_bam(fn_bam, regions):
 
     # To sort regions by chr and exon-position
     sidx_array = []
-    for i in len(regions):
+    for i in range(len(regions)):
         sidx_array.append(regions[i, 1] + regions[i, 0])
 
     if len(regions.shape) > 1:
-        sidx = sp.argsort(sidx_array[:, 1])
+        sidx = sp.argsort(sidx_array)
     else:
         print "Should not happen 1"
         # sidx = sp.argsort(np.vstack((regions[1], regions[0])))
