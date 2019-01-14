@@ -211,6 +211,10 @@ def reading_anno(fn_anno, overlap_genes, protein_coding_filter):
         except KeyError:
             data[key] = [value]
 
+    f = open("./filt_data.pkl", "wb")
+    pickle.dump(data, f)
+    f.close()
+
     return data
 
 
@@ -327,7 +331,7 @@ def get_annotation_table(fn_anno, protein_coding_filter):
     return exon_t_gene, const_exons
 
 
-def get_counts_from_single_bam(fn_bam, regions):
+def get_counts_from_single_bam(fn_bam, regions, exons):
     """This function extracts read counts from a given bam file spanning
        a set of given intervals."""
 
@@ -397,14 +401,17 @@ def get_counts_from_single_bam(fn_bam, regions):
     return cnts.ravel('C')
 
 
-def get_counts_from_multiple_bam(fn_bams, regions, const_exons):
+def get_counts_from_multiple_bam(fn_bams, regions, exons):
     """ This is a wrapper to concatenate counts for a given list of bam
         files"""
 
     if len(fn_bams) == 1:
-        return get_counts_from_single_bam(fn_bams[0], regions)[:, sp.newaxis]
+        return [get_counts_from_single_bam(fn_bams[0], regions, exons)]
     else:
-        return sp.hstack([get_counts_from_single_bam(fn_bams[i], regions)[:, sp.newaxis] for i in range(len(fn_bams))])
+        li = []
+        for i in range(len(fn_bams)):
+            li.append(get_counts_from_single_bam(fn_bams[i], regions, exons))
+        return li
 
 
 def parse_options(argv):
@@ -448,11 +455,11 @@ def main():
 
     if options.dir_bam != '-':
         file_names = glob.glob(os.path.join(options.dir_bam, '*.bam'))
-#        data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
+        data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
     else:
         assert options.fn_bam != '-'
         file_names = [options.fn_bam]
-#        data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
+        data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
 
     #avg_count_per_exon(data, exon_t_gene)
 
