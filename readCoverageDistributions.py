@@ -1,6 +1,7 @@
 import os
 import sys
 import glob
+import pickle
 from optparse import OptionParser, OptionGroup
 import pysam
 import time
@@ -233,7 +234,7 @@ def process_single_transcript_genes(tcrpt):
     # checking that we have at least two exons
     tcrpt = tcrpt[0]
     if tcrpt.find(',') == -1:
-        return None
+        return None, None
 
     # format is ID:exon1_positions,exon2_positions,...,exonN_positions:STRAND
 
@@ -245,8 +246,7 @@ def process_single_transcript_genes(tcrpt):
 def process_multi_transcript_genes(tcrpt):
     # We only use transcript isoforms that have at least two exons
     if sp.sum(np.core.defchararray.find(tcrpt, ',') != -1) != len(tcrpt):
-        # TODO: so we not just exclude those transcripts but ignore genes where one or more transcripts have less than 2 exons?!
-        return None
+        return None, None, None
 
     # make matrix of transcript struct and length
     my_exons = [x.split(':')[1].split(',') for x in tcrpt]
@@ -264,24 +264,21 @@ def process_multi_transcript_genes(tcrpt):
     n_match = sp.sum(dists == len(tcrpt))
 
     # make sure we have at least 3 constitutive exons
-    if n_match < 3:
-        return None
+    if n_match < 2:
+        return None, None, None
 
     # get constitutive exons
     i_const = dists == len(tcrpt)
     uq_const_ex = my_exons[u_idx][i_const]
-
-    first_ex = uq_const_ex[0]
-    last_ex = uq_const_ex[-1]
 
     # get length of all transcripts
     my_ex_struct_l = []
     for i, rec in enumerate(tcrpt):
         my_ex_struct_l.append(get_transcript_length(rec))
 
-    # first_ex = tcrpt[0].split(':')[0] + ':' + first_ex + ':' + tcrpt[0].split(':')[2]
-    # last_ex = tcrpt[0].split(':')[0] + ':' + last_ex + ':' + tcrpt[0].split(':')[2]
-    return [tcrpt[0].split(':')[0], tcrpt[0].split(':')[2], str(sp.median(my_ex_struct_l))], const_exons, all_exons
+    all_exons = []  # TODO
+
+    return [tcrpt[0].split(':')[0], tcrpt[0].split(':')[2], str(sp.median(my_ex_struct_l))], uq_const_ex, all_exons
 
 
 def read_annotation_file(fn_anno, protein_coding_filter):
@@ -296,12 +293,12 @@ def read_annotation_file(fn_anno, protein_coding_filter):
     new_data = []
 
     const_exons = dict()
-    all_exons = dict()
+    #all_exons = dict()  # TODO
     for gid in uq_g_id:
         # process transcripts
         if len(data[gid]) == 1:
             temp, c_e = process_single_transcript_genes(data[gid])
-            a_e = c_e
+            #a_e = c_e  # TODO
         else:
             temp, c_e, a_e = process_multi_transcript_genes(data[gid])
 
@@ -310,24 +307,24 @@ def read_annotation_file(fn_anno, protein_coding_filter):
             continue
         else:
             const_exons[gid] = c_e
-            all_exons[gid] = a_e
+            #all_exons[gid] = a_e  # TODO
             new_data.append([gid] + temp)
     new_data = sp.array(new_data)
     s_idx = sp.argsort(new_data[:, -1])
     new_data = new_data[s_idx, :]
     # filter gene with no name
-    return sp.array(new_data)
+    return sp.array(new_data), const_exons  #, all_exons TODO
 
 
 def get_annotation_table(fn_anno, protein_coding_filter):
 
     if fn_anno.lower().endswith('gtf'):
-        exon_t_gene = read_annotation_file(fn_anno, protein_coding_filter)
+        exon_t_gene, const_exons = read_annotation_file(fn_anno, protein_coding_filter)
     else:
         raise Exception(
             "Only annotation files in format gtf are supported. File name must end accordingly")
 
-    return exon_t_gene
+    return exon_t_gene, const_exons
 
 
 def get_counts_from_single_bam(fn_bam, regions):
@@ -400,7 +397,7 @@ def get_counts_from_single_bam(fn_bam, regions):
     return cnts.ravel('C')
 
 
-def get_counts_from_multiple_bam(fn_bams, regions):
+def get_counts_from_multiple_bam(fn_bams, regions, const_exons):
     """ This is a wrapper to concatenate counts for a given list of bam
         files"""
 
@@ -440,17 +437,22 @@ def main():
     options = parse_options(sys.argv)
     if os.path.exists("./anno.tmp"):
         exon_t_gene = sp.loadtxt("./anno.tmp", delimiter='\t', dtype='string')
+        const_exons = pickle.load(open("./const_ex.pkl", "rb"))
     else:
-        exon_t_gene = get_annotation_table(options.fn_anno, options.proteinCodingFilter)
+        exon_t_gene, const_exons = get_annotation_table(options.fn_anno, options.proteinCodingFilter)
+
         sp.savetxt("./anno.tmp", exon_t_gene, delimiter='\t', fmt='%s')
+        f = open("./const_ex.pkl", "wb")
+        pickle.dump(const_exons, f)
+        f.close()
 
     if options.dir_bam != '-':
         file_names = glob.glob(os.path.join(options.dir_bam, '*.bam'))
-    #    data = get_counts_from_multiple_bam(file_names, exon_t_gene)
+#        data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
     else:
         assert options.fn_bam != '-'
         file_names = [options.fn_bam]
-    #    data = get_counts_from_multiple_bam(file_names, exon_t_gene)
+#        data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
 
     #avg_count_per_exon(data, exon_t_gene)
 
