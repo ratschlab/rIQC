@@ -25,11 +25,12 @@ ATTRIBUTE = 8   # semicolon-separated list of tag-value pairs
 
 # Average count per exon (histogram) (depending on location); for both all exons and only constitutive ones
 def avg_count_per_exon(counts, regions):
-    """
-    Plots one histogram for all genes: Average count of first, second, ..., last exon with variance as error metric
-    (positions at the end have most likely less samples than at the beginning)
-    NOT considering length of exons or length of gene, also different genes have last exon at different positions (different amounts of exons)
-    """
+    it = 0
+    for el in counts:
+        it += 1
+        print el
+        if it > 5:
+            break
 
 
 # Expression distribution over normalized gene length (in different length-bins-> same as already used; constitutive and not)
@@ -359,7 +360,7 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
         rec_exons = exons[rec[0]]  # rec[0] is unique gene ID
         if rec[2] == "-" and int(rec_exons[0].split("-")[0]) < int(rec_exons[-1].split('-')[0]):
             rec_exons = np.flipud(rec_exons)
-        exon_counts = np.zeros((len(rec_exons), 4), dtype=int)  # store start, end, length, count
+        exon_counts = np.zeros((len(rec_exons), 4), dtype=float)  # store start, end, length, count
         if i > 0 and i % 100 == 0:
             print '%i rounds to go. ETA %.0f seconds' % (regions.shape[0] - i, (time.time() - t0) / i * (regions.shape[0] - i))
         if len(regions.shape) == 1:
@@ -389,7 +390,7 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
                     print >> sys.stderr, 'Ignored %s' % chrm
                     cnt = 1
                 finally:
-                    exon_counts[e, 3] = cnt
+                    exon_counts[e, 3] = cnt / exon_counts[e, 2]
         cnts[rec[0]] = exon_counts
     bam_file.close()
 
@@ -437,34 +438,31 @@ def parse_options(argv):
 
 def main():
     options = parse_options(sys.argv)
-    if os.path.exists("./anno.tmp"):
+    if os.path.exists("./anno.tmp") and os.path.exists("./const_ex.tmp"):
         exon_t_gene = sp.loadtxt("./anno.tmp", delimiter='\t', dtype='string')
         const_exons = pickle.load(open("./const_ex.pkl", "rb"))
     else:
         exon_t_gene, const_exons = get_annotation_table(options.fn_anno, options.proteinCodingFilter)
-
         sp.savetxt("./anno.tmp", exon_t_gene, delimiter='\t', fmt='%s')
         f = open("./const_ex.pkl", "wb")
         pickle.dump(const_exons, f)
         f.close()
 
-    if options.dir_bam != '-':
-        file_names = glob.glob(os.path.join(options.dir_bam, '*.bam'))
-        data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
+    if not os.path.exists("./count_data.pkl"):
+        if options.dir_bam != '-':
+            file_names = glob.glob(os.path.join(options.dir_bam, '*.bam'))
+            data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
+        else:
+            assert options.fn_bam != '-'
+            file_names = [options.fn_bam]
+            data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
+        f = open("./count_data.pkl", "wb")
+        pickle.dump(data, f)
+        f.close()
     else:
-        assert options.fn_bam != '-'
-        file_names = [options.fn_bam]
-        data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
-    f = open("./count_data.pkl", "wb")
-    pickle.dump(data, f)
-    f.close()
+        data = pickle.load(open("./count_data.pkl", "rb"))
 
-    #avg_count_per_exon(data, exon_t_gene)
-
-    # Normalize counts by exon length
-    #exon_l = sp.array([int(x.split(':')[1].split('-')[1]) - int(x.split(':')[1].split('-')[0]) + 1 for x in exon_t_gene[:, :2].ravel('C')],
-    #                  dtype='float') / 1000.
-    #data /= sp.tile(exon_l[:, sp.newaxis], data.shape[1])
+    avg_count_per_exon(data, exon_t_gene)
 
 
 if __name__ == "__main__":
