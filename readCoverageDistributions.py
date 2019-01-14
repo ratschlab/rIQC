@@ -390,9 +390,7 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
                     cnt = 1
                 finally:
                     exon_counts[e, 3] = cnt
-        print exon_counts
         cnts[rec[0]] = exon_counts
-        print cnts[rec[0]]
     bam_file.close()
 
     return cnts
@@ -457,6 +455,9 @@ def main():
         assert options.fn_bam != '-'
         file_names = [options.fn_bam]
         data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
+    f = open("./count_data.pkl", "wb")
+    pickle.dump(data, f)
+    f.close()
 
     #avg_count_per_exon(data, exon_t_gene)
 
