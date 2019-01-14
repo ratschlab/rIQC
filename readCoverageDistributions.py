@@ -358,7 +358,7 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
         rec = regions[ii]  # e.g. ENSG00000233493.3_2	chr19	-	1000
         rec_exons = exons[rec[0]]  # rec[0] is unique gene ID
         if rec[2] == "-" and int(rec_exons[0].split("-")[0]) < int(rec_exons[-1].split('-')[0]):
-            rec_exons = np.flip(rec_exons)
+            rec_exons = np.flipud(rec_exons)
         exon_counts = np.zeros((len(rec_exons), 4), dtype=int)  # store start, end, length, count
         if i > 0 and i % 100 == 0:
             print '%i rounds to go. ETA %.0f seconds' % (regions.shape[0] - i, (time.time() - t0) / i * (regions.shape[0] - i))
