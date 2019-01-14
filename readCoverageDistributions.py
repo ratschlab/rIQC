@@ -5,8 +5,7 @@ from optparse import OptionParser, OptionGroup
 import pysam
 import time
 import numpy as np
-import scipy as sp
-from libs.usefulTools import *
+from libs.usefulTools import *  # brings packages: warnings, scipy as sp
 
 # Some Numbers
 NMB_CHR = 23
@@ -30,7 +29,6 @@ def avg_count_per_exon(counts, regions):
     (positions at the end have most likely less samples than at the beginning)
     NOT considering length of exons or length of gene, also different genes have last exon at different positions (different amounts of exons)
     """
-
 
 
 # Expression distribution over normalized gene length (in different length-bins-> same as already used; constitutive and not)
@@ -76,6 +74,7 @@ def get_overlap_genes(fn_anno):
     """
 
     data = []
+    # For all gene entries
     for l in open(fn_anno, 'r'):
         if l[SEQ_NAME] == '#':
             continue  # comments
@@ -158,9 +157,9 @@ def reading_anno(fn_anno, overlap_genes, protein_coding_filter):
     chr_whitelist.extend(['chr%i' % i for i in range(NMB_CHR)])
     chr_whitelist.extend(['chrx', 'chry', 'chrm', 'x', 'y', 'm', 'mt'])
 
-    data = dict()
+    data = dict()  # a dictionary with gene IDs as keys and a list of transcripts with format CHR:listOfExons(e1,e2,...):STRAND as values
     # collect transcript information
-    transcripts = dict()
+    transcripts = dict()  # a dictionary with transcript IDs as keys and a list of exons (start-end) as value
     for l in open(fn_anno, 'r'):
         if l[SEQ_NAME] == '#':
             continue
@@ -236,14 +235,11 @@ def process_single_transcript_genes(tcrpt):
     if tcrpt.find(',') == -1:
         return None
 
-    # reformat to somewhat convenient reading
-    # format # ID : exon1_positions,exon2_positions,...,exonN_positions : STRAND
+    # format is ID:exon1_positions,exon2_positions,...,exonN_positions:STRAND
 
-    exons = tcrpt.split(':')[1].split(',')
+    exons = tcrpt.split(':')[1].split(',')  # as list
 
-    # first_ex = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[0] + ':' + tcrpt.split(':')[2]
-    # last_ex = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[-1] + ':' + tcrpt.split(':')[2]
-    return [",".join(exons), tcrpt.split(':')[0], tcrpt.split(':')[2], get_transcript_length(tcrpt)]
+    return [tcrpt.split(':')[0], tcrpt.split(':')[2], get_transcript_length(tcrpt)], exons
 
 
 def process_multi_transcript_genes(tcrpt):
@@ -285,31 +281,37 @@ def process_multi_transcript_genes(tcrpt):
 
     # first_ex = tcrpt[0].split(':')[0] + ':' + first_ex + ':' + tcrpt[0].split(':')[2]
     # last_ex = tcrpt[0].split(':')[0] + ':' + last_ex + ':' + tcrpt[0].split(':')[2]
-    return [",".join(uq_const_ex), tcrpt[0].split(':')[0], tcrpt[0].split(':')[2], str(sp.median(my_ex_struct_l))]
+    return [tcrpt[0].split(':')[0], tcrpt[0].split(':')[2], str(sp.median(my_ex_struct_l))], const_exons, all_exons
 
 
 def read_annotation_file(fn_anno, protein_coding_filter):
     # get list of overlapping genes
     overlap_genes = get_overlap_genes(fn_anno)
 
-    # reading annotation file in
+    # reading in annotation file
     data = reading_anno(fn_anno, overlap_genes, protein_coding_filter)
+    # data is a dictionary with gene IDs as keys and a list of transcripts with format CHR:listOfExons(e1,e2,...):STRAND as values
 
     uq_g_id = data.keys()  # unique gene ids
     new_data = []
+
+    const_exons = dict()
+    all_exons = dict()
     for gid in uq_g_id:
         # process transcripts
         if len(data[gid]) == 1:
-            temp = process_single_transcript_genes(data[gid])
+            temp, c_e = process_single_transcript_genes(data[gid])
+            a_e = c_e
         else:
-            temp = process_multi_transcript_genes(data[gid])
+            temp, c_e, a_e = process_multi_transcript_genes(data[gid])
 
         # make sure it has been processed correctly
         if temp is None:
             continue
         else:
-            temp.extend([gid])
-            new_data.append(temp)
+            const_exons[gid] = c_e
+            all_exons[gid] = a_e
+            new_data.append([gid] + temp)
     new_data = sp.array(new_data)
     s_idx = sp.argsort(new_data[:, -1])
     new_data = new_data[s_idx, :]
@@ -444,13 +446,13 @@ def main():
 
     if options.dir_bam != '-':
         file_names = glob.glob(os.path.join(options.dir_bam, '*.bam'))
-        data = get_counts_from_multiple_bam(file_names, exon_t_gene)
+    #    data = get_counts_from_multiple_bam(file_names, exon_t_gene)
     else:
         assert options.fn_bam != '-'
         file_names = [options.fn_bam]
-        data = get_counts_from_multiple_bam(file_names, exon_t_gene)
+    #    data = get_counts_from_multiple_bam(file_names, exon_t_gene)
 
-    avg_count_per_exon(data, exon_t_gene)
+    #avg_count_per_exon(data, exon_t_gene)
 
     # Normalize counts by exon length
     #exon_l = sp.array([int(x.split(':')[1].split('-')[1]) - int(x.split(':')[1].split('-')[0]) + 1 for x in exon_t_gene[:, :2].ravel('C')],
