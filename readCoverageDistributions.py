@@ -50,7 +50,7 @@ def last_const_exon_pos():
 ###############################################################################################
 
 
-def get_counts_from_marginal_exons(exon_t_gene, data):
+def get_counts_from_exons(exon_t_gene, data):
     my_counts = sp.zeros((exon_t_gene.shape[0], data.shape[1], 2))
 
     for i, rec in enumerate(exon_t_gene):
@@ -211,10 +211,6 @@ def reading_anno(fn_anno, overlap_genes, protein_coding_filter):
         except KeyError:
             data[key] = [value]
 
-    f = open("./filt_data.pkl", "wb")
-    pickle.dump(data, f)
-    f.close()
-
     return data
 
 
@@ -348,23 +344,22 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
 
     bam_file = pysam.Samfile(fn_bam, 'rb')
     ref_seqs = bam_file.references
-    cnts = np.empty([regions.shape[0]], dtype="string")
+    cnts = dict()
     t0 = time.time()
 
-    # To sort regions by chr and exon-position
-    sidx_array = []
-    for i in range(len(regions)):
-        sidx_array.append(regions[i, 1] + regions[i, 0])
-
+    # Sort regions by chr
     if len(regions.shape) > 1:
-        sidx = sp.argsort(sidx_array)
+        sidx = sp.argsort(regions[:, 1])
     else:
         print "Should not happen 1"
         # sidx = sp.argsort(np.vstack((regions[1], regions[0])))
 
     for i, ii in enumerate(sidx):
-        rec = regions[ii]
-        exon_counts = []
+        rec = regions[ii]  # e.g. ENSG00000233493.3_2	chr19	-	1000
+        rec_exons = exons[rec[0]]  # rec[0] is unique gene ID
+        if rec[2] == "-" and int(rec_exons[0].split("-")[0]) < int(rec_exons[-1].split('-')[0]):
+            rec_exons = np.flip(rec_exons)
+        exon_counts = np.zeros((len(rec_exons), 4), dtype=int)  # store start, end, length, count
         if i > 0 and i % 100 == 0:
             print '%i rounds to go. ETA %.0f seconds' % (regions.shape[0] - i, (time.time() - t0) / i * (regions.shape[0] - i))
         if len(regions.shape) == 1:
@@ -377,13 +372,15 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
             # start2 = None
             # end2 = None
         else:
-            exons = rec[0].split(",")
             chrm = rec[1]
             if chrm not in ref_seqs:
                 chrm = chrm.strip('chr')
-            for e in exons:
-                start = int(e.split("-")[0])
-                end = int(e.split("-")[1])
+            for e in range(len(rec_exons)):
+                start = int(rec_exons[e].split("-")[0])
+                end = int(rec_exons[e].split("-")[1])
+                exon_counts[e, 0] = start
+                exon_counts[e, 1] = end
+                exon_counts[e, 2] = end - start
                 try:
                     cnt = int(sp.ceil(sp.sum(
                         [sp.sum((sp.array(read.positions) >= start) & (sp.array(read.positions) < end)) for read in
@@ -392,13 +389,13 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
                     print >> sys.stderr, 'Ignored %s' % chrm
                     cnt = 1
                 finally:
-                    exon_counts.append(str(cnt))
+                    exon_counts[e, 3] = cnt
         print exon_counts
-        cnts[ii] = ",".join(exon_counts)
-        print cnts[ii]
+        cnts[rec[0]] = exon_counts
+        print cnts[rec[0]]
     bam_file.close()
 
-    return cnts.ravel('C')
+    return cnts
 
 
 def get_counts_from_multiple_bam(fn_bams, regions, exons):
