@@ -413,12 +413,12 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
 
         if len(regions.shape) == 1:
             exit("regions.shape == 1")
-        else:
-            chrm = rec[1]
+        # else
+        chrm = rec[1]
+        if chrm not in ref_seqs:
+            chrm = chrm.strip('chr')
             if chrm not in ref_seqs:
-                chrm = chrm.strip('chr')
-                if chrm not in ref_seqs:
-                    exit("%s is not in bam-references" % chrm)
+                exit("%s is not in bam-references" % chrm)
 
         for e in range(len(rec_exons)):
                 start = int(rec_exons[e].split("-")[0])
@@ -426,7 +426,7 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
                 exon_counts[e, 0] = start
                 exon_counts[e, 1] = end
                 exon_counts[e, 2] = end - start
-                cnt = 0
+                cnt = 1
                 try:
                     cnt = int(sp.ceil(sp.sum(
                         [sp.sum((sp.array(read.positions) >= start) & (sp.array(read.positions) < end)) for read in
