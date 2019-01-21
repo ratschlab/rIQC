@@ -7,6 +7,7 @@ import pysam
 import time
 import numpy as np
 from libs.usefulTools import *  # brings packages: warnings, scipy as sp
+import matplotlib.pyplot as plt
 
 # Some Numbers
 NMB_CHR = 23
@@ -24,19 +25,78 @@ ATTRIBUTE = 8   # semicolon-separated list of tag-value pairs
 
 
 # Average count per exon (histogram) (depending on location); for both all exons and only constitutive ones
-def avg_count_per_exon(counts, regions):
-    it = 0
-    for el in counts:
-        it += 1
-        print el
-        if it > 5:
-            break
+def avg_count_per_exon(counts, regions, file_name):
+    for gene in regions:
+        if not gene[0] in counts:
+            continue
+        val = counts[gene[0]]
+        if not np.sum(val[:, 3] > 0.000):
+            continue
+        if gene[2] == "+":
+            start = val[0][0]  # first position
+            end = val[-1][1]  # last position
+        else:
+            end = val[0][1]  # first position
+            start = val[-1][0]  # last position
+        interval = (end - start) / 100
+        for ex in val:
+            rel_pos = (ex[0]-start)/interval + ((ex[1]-start)/interval - (ex[0]-start)/interval) / 2  # middle position of exon normalized to [0,100]
+            if rel_pos < 0 or rel_pos > 100:
+                print "Oh"
+            if start > end:
+                print "Oha"
+            plt.plot(rel_pos, ex[3], ".", color="firebrick")
+
+    plt.title("Constitutive Exons - all lengths (%s)" % file_name)
+    plt.ylabel("Normalized Count")
+    plt.xlabel("Relative Location")
+
+    plt.savefig("../2018_degradationPaper/Coverage/constitutive_all_%s_filtered" %file_name)
+    plt.show()
 
 
 # Expression distribution over normalized gene length (in different length-bins-> same as already used; constitutive and not)
 # # Generate average coverage distribution across all genes within that bin after projecting all genes in bin onto one length
-def distr_over_gene_lengths():
-    print "Hi"
+def distr_over_gene_lengths(counts, regions, file_name):
+    gene_lengths = regions[:, 3]
+    nmb_genes = gene_lengths.shape[0]
+
+    nmb_bins = 10
+    for b in range(nmb_bins):
+        idx_s = np.argsort(gene_lengths)
+        low_b = nmb_genes / nmb_bins * b
+        up_b = nmb_genes / nmb_bins * (b + 1)
+
+        low_l = gene_lengths[idx_s[low_b]]
+        up_l = gene_lengths[idx_s[up_b]]
+
+        for gene in regions:
+            if not gene[0] in counts:
+                continue
+            if not gene[3] >= low_l and gene[3] < up_l:
+                continue
+            val = counts[gene[0]]
+            if gene[2] == "+":
+                start = val[0][0]  # first position
+                end = val[-1][1]  # last position
+            else:
+                end = val[0][1]  # first position
+                start = val[-1][0]  # last position
+            interval = (end - start) / 100
+            for ex in val:
+                rel_pos = (ex[0]-start)/interval + ((ex[1]-start)/interval - (ex[0]-start)/interval) / 2  # middle position of exon normalized to [0,100]
+                if rel_pos < 0 or rel_pos > 100:
+                    print "Oh"
+                if start > end:
+                    print "Oha"
+                plt.plot(rel_pos, ex[3], ".", color="blue")
+
+        plt.title("Constitutive Exons - bin %i (%s)" % (b+1, file_name))
+        plt.ylabel("Normalized Count")
+        plt.xlabel("Relative Location")
+
+        plt.savefig("../2018_degradationPaper/Coverage/constitutive_bin%i_%s" % (b+1, file_name))
+        plt.show()
 
 
 # Distribution of length of last-constitutive exons (joint and in different length bins)
@@ -438,7 +498,7 @@ def parse_options(argv):
 
 def main():
     options = parse_options(sys.argv)
-    if os.path.exists("./anno.tmp") and os.path.exists("./const_ex.tmp"):
+    if os.path.exists("./anno.tmp") and os.path.exists("./const_ex.pkl"):
         exon_t_gene = sp.loadtxt("./anno.tmp", delimiter='\t', dtype='string')
         const_exons = pickle.load(open("./const_ex.pkl", "rb"))
     else:
@@ -460,9 +520,12 @@ def main():
         pickle.dump(data, f)
         f.close()
     else:
+        file_names = ['FFPE_1', 'FFPE_2', 'FFPE_3', 'FFPE_4', 'FF_1', 'FF_2', 'FF_3', 'FF_4']
         data = pickle.load(open("./count_data.pkl", "rb"))
 
-    avg_count_per_exon(data, exon_t_gene)
+    for i in range(len(file_names)):
+        # distr_over_gene_lengths(data[i], exon_t_gene, file_names[i])
+        avg_count_per_exon(data[i], exon_t_gene, file_names[i])
 
 
 if __name__ == "__main__":
