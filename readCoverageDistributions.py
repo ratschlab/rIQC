@@ -396,24 +396,31 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
     if len(regions.shape) > 1:
         sidx = sp.argsort(regions[:, 1])  # seq_name
     else:
-        print "Should not happen 1"
+        exit("regions.shape was not > 1")
         # sidx = sp.argsort(np.vstack((regions[1], regions[0])))
 
     for i, ii in enumerate(sidx):
-        rec = regions[ii]  # e.g. ENSG00000233493.3_2	chr19	-	1000
-        rec_exons = exons[rec[0]]  # rec[0] is unique gene ID
-        if rec[2] == "-" and int(rec_exons[0].split("-")[0]) < int(rec_exons[-1].split('-')[0]):
-            rec_exons = np.flipud(rec_exons)
-        exon_counts = np.zeros((len(rec_exons), 4), dtype=float)  # store start, end, length, count
         if i > 0 and i % 100 == 0:
             print '%i rounds to go. ETA %.0f seconds' % (regions.shape[0] - i, (time.time() - t0) / i * (regions.shape[0] - i))
+
+        rec = regions[ii]  # e.g. ENSG00000233493.3_2	chr19	-	1000
+        rec_exons = exons[rec[0]]  # rec[0] is unique gene ID
+
+        if rec[2] == "-" and int(rec_exons[0].split("-")[0]) < int(rec_exons[-1].split('-')[0]):
+            rec_exons = np.flipud(rec_exons)
+
+        exon_counts = np.zeros((len(rec_exons), 4), dtype=float)  # store start, end, length, count
+
         if len(regions.shape) == 1:
-            print "Should not happen 2"
+            exit("regions.shape == 1")
         else:
             chrm = rec[1]
             if chrm not in ref_seqs:
                 chrm = chrm.strip('chr')
-	    for e in range(len(rec_exons)):
+                if chrm not in ref_seqs:
+                    exit("%s is not in bam-references" % chrm)
+
+        for e in range(len(rec_exons)):
                 start = int(rec_exons[e].split("-")[0])
                 end = int(rec_exons[e].split("-")[1])
                 exon_counts[e, 0] = start
