@@ -51,25 +51,6 @@ def last_const_exon_pos():
 ###############################################################################################
 
 
-def get_counts_from_exons(exon_t_gene, data):
-    my_counts = sp.zeros((exon_t_gene.shape[0], data.shape[1], 2))
-
-    for i, rec in enumerate(exon_t_gene):
-
-        i_start = i*2
-        i_end = i*2 + 1
-
-        if rec[0].split(':')[-1] == '-' and \
-                int(rec[0].split(':')[1].split('-')[0]) \
-                < int(rec[1].split(':')[1].split('-')[0]):
-            i_start, i_end = i_end, i_start
-
-        my_counts[i, :, 0] = data[i_start, :]
-        my_counts[i, :, 1] = data[i_end, :]
-
-    return my_counts
-
-
 def get_overlap_genes(fn_anno):
     """
     Returns a list of gene names which are overlapping
@@ -212,7 +193,8 @@ def reading_anno(fn_anno, overlap_genes, protein_coding_filter):
         except KeyError:
             data[key] = [value]
 
-    return data
+    return data  # a dictionary with gene-ID as key and a list of transcripts, each in the form
+                 # "chr_name:exon1_start-exon1_end,...,exonN_start-exonN_end:strand" as value
 
 
 def get_transcript_length(rec):
@@ -264,7 +246,7 @@ def process_multi_transcript_genes(tcrpt):
     dummy, u_idx, dists = unique_rows(my_exons_int, index=True, counts=True)
     n_match = sp.sum(dists == len(tcrpt))
 
-    # make sure we have at least 3 constitutive exons
+    # make sure we have at least 2 constitutive exons
     if n_match < 2:
         return None, None, None
 
@@ -294,12 +276,12 @@ def read_annotation_file(fn_anno, protein_coding_filter):
     new_data = []
 
     const_exons = dict()
-    #all_exons = dict()  # TODO
+    # all_exons = dict()  # TODO
     for gid in uq_g_id:
         # process transcripts
         if len(data[gid]) == 1:
             temp, c_e = process_single_transcript_genes(data[gid])
-            #a_e = c_e  # TODO
+            # a_e = c_e  # TODO
         else:
             temp, c_e, a_e = process_multi_transcript_genes(data[gid])
 
@@ -308,13 +290,15 @@ def read_annotation_file(fn_anno, protein_coding_filter):
             continue
         else:
             const_exons[gid] = c_e
-            #all_exons[gid] = a_e  # TODO
+            # all_exons[gid] = a_e  # TODO
             new_data.append([gid] + temp)
     new_data = sp.array(new_data)
     s_idx = sp.argsort(new_data[:, -1])
     new_data = new_data[s_idx, :]
     # filter gene with no name
-    return sp.array(new_data), const_exons  #, all_exons TODO
+
+    # new_data is array with entries: gene_ID, seq_name, strand, (median) transcript-length
+    return sp.array(new_data), const_exons  # , all_exons TODO
 
 
 def get_annotation_table(fn_anno, protein_coding_filter):
@@ -350,7 +334,7 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
 
     # Sort regions by chr
     if len(regions.shape) > 1:
-        sidx = sp.argsort(regions[:, 1])
+        sidx = sp.argsort(regions[:, 1])  # seq_name
     else:
         print "Should not happen 1"
         # sidx = sp.argsort(np.vstack((regions[1], regions[0])))
@@ -360,18 +344,14 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
         rec_exons = exons[rec[0]]  # rec[0] is unique gene ID
         if rec[2] == "-" and int(rec_exons[0].split("-")[0]) < int(rec_exons[-1].split('-')[0]):
             rec_exons = np.flipud(rec_exons)
-        exon_counts = np.zeros((len(rec_exons), 4), dtype=float)  # store start, end, length, count
+        START = 0
+        END = 1
+        COUNT = 2
+        exon_counts = np.zeros((len(rec_exons), 3), dtype=float)  # store start, end, count (normalized)
         if i > 0 and i % 100 == 0:
             print '%i rounds to go. ETA %.0f seconds' % (regions.shape[0] - i, (time.time() - t0) / i * (regions.shape[0] - i))
         if len(regions.shape) == 1:
             print "Should not happen 2"
-            # chrm = rec.split(':')[0]
-            # if chrm not in ref_seqs:
-            #     chrm = chrm.strip('chr')
-            # start1 = int(rec.split(':')[1].split('-')[0])
-            # end1 = int(rec.split(':')[1].split('-')[1])
-            # start2 = None
-            # end2 = None
         else:
             chrm = rec[1]
             if chrm not in ref_seqs:
@@ -379,9 +359,9 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
             for e in range(len(rec_exons)):
                 start = int(rec_exons[e].split("-")[0])
                 end = int(rec_exons[e].split("-")[1])
-                exon_counts[e, 0] = start
-                exon_counts[e, 1] = end
-                exon_counts[e, 2] = end - start
+                exon_counts[e, START] = start
+                exon_counts[e, END] = end
+                length = end - start
                 try:
                     cnt = int(sp.ceil(sp.sum(
                         [sp.sum((sp.array(read.positions) >= start) & (sp.array(read.positions) < end)) for read in
@@ -390,7 +370,7 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
                     print >> sys.stderr, 'Ignored %s' % chrm
                     cnt = 1
                 finally:
-                    exon_counts[e, 3] = cnt / exon_counts[e, 2]
+                    exon_counts[e, COUNT] = cnt / length
         cnts[rec[0]] = exon_counts
     bam_file.close()
 
@@ -461,7 +441,11 @@ def main():
         f.close()
     else:
         data = pickle.load(open("./count_data.pkl", "rb"))
+        # data is a dictionary with unique gene_IDs as keys and
+        # a list of (constitutive) exons (start, end, (normalized) count) as value
 
+    ######################################
+    # Plotting Coverage distribution, etc.
     avg_count_per_exon(data, exon_t_gene)
 
 
