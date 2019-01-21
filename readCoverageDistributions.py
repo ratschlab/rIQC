@@ -404,10 +404,7 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
         rec_exons = exons[rec[0]]  # rec[0] is unique gene ID
         if rec[2] == "-" and int(rec_exons[0].split("-")[0]) < int(rec_exons[-1].split('-')[0]):
             rec_exons = np.flipud(rec_exons)
-        START = 0
-        END = 1
-        COUNT = 2
-        exon_counts = np.zeros((len(rec_exons), 3), dtype=float)  # store start, end, count (normalized)
+        exon_counts = np.zeros((len(rec_exons), 4), dtype=float)  # store start, end, length, count
         if i > 0 and i % 100 == 0:
             print '%i rounds to go. ETA %.0f seconds' % (regions.shape[0] - i, (time.time() - t0) / i * (regions.shape[0] - i))
         if len(regions.shape) == 1:
@@ -419,9 +416,9 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
             for e in range(len(rec_exons)):
                 start = int(rec_exons[e].split("-")[0])
                 end = int(rec_exons[e].split("-")[1])
-                exon_counts[e, START] = start
-                exon_counts[e, END] = end
-                length = end - start
+                exon_counts[e, 0] = start
+                exon_counts[e, 1] = end
+                exon_counts[e, 2] = end - start
                 try:
                     cnt = int(sp.ceil(sp.sum(
                         [sp.sum((sp.array(read.positions) >= start) & (sp.array(read.positions) < end)) for read in
@@ -430,7 +427,7 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
                     print >> sys.stderr, 'Ignored %s' % chrm
                     cnt = 1
                 finally:
-                    exon_counts[e, COUNT] = cnt / length
+                    exon_counts[e, 3] = cnt / exon_counts[e, 2]
         cnts[rec[0]] = exon_counts
     bam_file.close()
 
