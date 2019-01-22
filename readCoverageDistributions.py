@@ -24,34 +24,96 @@ FRAME = 7       # 0/1/2 : position in codon
 ATTRIBUTE = 8   # semicolon-separated list of tag-value pairs
 
 
-# Average count per exon (histogram) (depending on location); for both all exons and only constitutive ones
-def avg_count_per_exon(counts, regions, file_name):
+def avg_count_per_exon_histo(counts, regions, file_name):
+    coords = dict()
     for gene in regions:
-        if not gene[0] in counts:
+        if not gene[0] in counts:  # 0 = ID
             continue
         val = counts[gene[0]]
-        if not np.sum(val[:, 3] > 0.000):
+        if not np.sum(val[:, 3] > 0.000):  # if none of the exons is longer than 0
             continue
-        if gene[2] == "+":
+        if gene[2] == "+":  # 2 = strand
             start = val[0][0]  # first position
             end = val[-1][1]  # last position
         else:
-            end = val[0][1]  # first position
-            start = val[-1][0]  # last position
-        interval = (end - start) / 100
+            end = val[0][1]  # last position
+            start = val[-1][0]  # first position
+        interval = (end - start) / 100.0
         for ex in val:
-            rel_pos = (ex[0]-start)/interval + ((ex[1]-start)/interval - (ex[0]-start)/interval) / 2  # middle position of exon normalized to [0,100]
+            if ex[0] < start:
+                print "Error: start was not smallest index"
+            rel_pos = (ex[0] - start) / interval + (
+                        (ex[1] - start) / interval - (ex[0] - start) / interval) / 2  # middle position of exon normalized to [0,100]
+            if gene[2] == "-":
+                rel_pos = 100 - rel_pos
             if rel_pos < 0 or rel_pos > 100:
-                print "Oh"
+                print "Position in unexpected range"
             if start > end:
-                print "Oha"
-            plt.plot(rel_pos, ex[3], ".", color="firebrick")
+                print "Made a mistake"
 
+            try:
+                coords[np.floor(rel_pos / 10.0)].append(ex[3])
+            except KeyError:
+                coords[np.floor(rel_pos / 10.0)] = [ex[3]]
+
+    for key in coords:
+        p1 = plt.bar(10 * key, len(filter(lambda ex_l: (ex_l > 0), coords[key])), width=2, color='blue', align='edge')
+        p2 = plt.bar((10 * key) + 2, len(filter(lambda ex_l: (ex_l > 0.5), coords[key])), width=2, color='green', align='edge')
+        p3 = plt.bar((10 * key) + 4, len(filter(lambda ex_l: (ex_l > 1), coords[key])), width=2, color='red', align='edge')
+        p4 = plt.bar((10 * key) + 6, len(filter(lambda ex_l: (ex_l > 2), coords[key])), width=2, color='purple', align='edge')
+        p5 = plt.bar((10 * key) + 8, len(filter(lambda ex_l: (ex_l > 4), coords[key])), width=2, color='orange', align='edge')
+
+    plt.xlim(0, 100)
+    plt.ylim(0, 1100)
+    plt.legend([p1, p2, p3, p4, p5], ["> 0", "> 0.5", "> 1", "> 2", "> 4"])
+    plt.title("Constitutive Exons - all lengths (%s)" % file_name)
+    plt.ylabel("Number of exons with a certain length")
+    plt.xlabel("Relative Location (10 areas)")
+
+    plt.savefig("../2018_degradationPaper/Coverage_hg38/histo_filtered_constitutive_all_%s" % file_name)
+    plt.show()
+
+
+# Average count per exon (depending on location); for both all exons and only constitutive ones
+def avg_count_per_exon(counts, regions, file_name):
+    # regions is array with rows "gene_ID   chr   strand   transcript_length"
+    # counts is dict with gene_ID as key and numpy-array of exons (rows) with start, end, normalized count (columns) as value
+    for gene in regions:
+        if not gene[0] in counts:  # 0 = ID
+            continue
+        val = counts[gene[0]]
+        if not np.sum(val[:, 3] > 0.000):  # if none of the exons is longer than 0
+            continue
+        if gene[2] == "+":  # 2 = strand
+            start = val[0][0]  # first position
+            end = val[-1][1]  # last position
+        else:
+            end = val[0][1]  # last position
+            start = val[-1][0]  # first position
+        interval = (end - start) / 100.0
+        for ex in val:
+            if ex[0] < start:
+                print "Error: start was not smallest index"
+            rel_pos = (ex[0]-start)/interval + ((ex[1]-start)/interval - (ex[0]-start)/interval) / 2  # middle position of exon normalized to [0,100]
+            if gene[2] == "-":
+                rel_pos = 100 - rel_pos
+            if rel_pos < 0 or rel_pos > 100:
+                print "Position in unexpected range"
+            if start > end:
+                print "Made a mistake"
+
+            if ex[3] > 0:
+                plt.plot(rel_pos, ex[3], ".", color="firebrick")
+            else:
+                plt.plot(rel_pos, 0, ".", color="firebrick")
+
+    plt.xlim(0, 100)
+    plt.ylim(0, 20)
     plt.title("Constitutive Exons - all lengths (%s)" % file_name)
     plt.ylabel("Normalized Count")
     plt.xlabel("Relative Location")
 
-    plt.savefig("../2018_degradationPaper/Coverage/constitutive_all_%s_filtered" %file_name)
+    plt.savefig("../2018_degradationPaper/Coverage_hg38/filtered_constitutive_all_%s" % file_name)
     plt.show()
 
 
@@ -319,7 +381,7 @@ def process_multi_transcript_genes(tcrpt):
     for i, rec in enumerate(tcrpt):
         my_ex_struct_l.append(get_transcript_length(rec))
 
-    all_exons = []  # TODO
+    all_exons = my_exons[u_idx]
 
     return [tcrpt[0].split(':')[0], tcrpt[0].split(':')[2], str(sp.median(my_ex_struct_l))], uq_const_ex, all_exons
 
@@ -336,12 +398,12 @@ def read_annotation_file(fn_anno, protein_coding_filter):
     new_data = []
 
     const_exons = dict()
-    # all_exons = dict()  # TODO
+    all_exons = dict()
     for gid in uq_g_id:
         # process transcripts
         if len(data[gid]) == 1:
             temp, c_e = process_single_transcript_genes(data[gid])
-            # a_e = c_e  # TODO
+            a_e = c_e
         else:
             temp, c_e, a_e = process_multi_transcript_genes(data[gid])
 
@@ -350,7 +412,7 @@ def read_annotation_file(fn_anno, protein_coding_filter):
             continue
         else:
             const_exons[gid] = c_e
-            # all_exons[gid] = a_e  # TODO
+            all_exons[gid] = a_e
             new_data.append([gid] + temp)
     new_data = sp.array(new_data)
     s_idx = sp.argsort(new_data[:, -1])
@@ -358,18 +420,18 @@ def read_annotation_file(fn_anno, protein_coding_filter):
     # filter gene with no name
 
     # new_data is array with entries: gene_ID, seq_name, strand, (median) transcript-length
-    return sp.array(new_data), const_exons  # , all_exons TODO
+    return sp.array(new_data), const_exons, all_exons
 
 
 def get_annotation_table(fn_anno, protein_coding_filter):
 
     if fn_anno.lower().endswith('gtf'):
-        exon_t_gene, const_exons = read_annotation_file(fn_anno, protein_coding_filter)
+        exon_t_gene, const_exons, all_exons = read_annotation_file(fn_anno, protein_coding_filter)
     else:
         raise Exception(
             "Only annotation files in format gtf are supported. File name must end accordingly")
 
-    return exon_t_gene, const_exons
+    return exon_t_gene, const_exons, all_exons
 
 
 def get_counts_from_single_bam(fn_bam, regions, exons):
@@ -485,14 +547,18 @@ def parse_options(argv):
 
 def main():
     options = parse_options(sys.argv)
-    if os.path.exists("./anno.tmp") and os.path.exists("./const_ex.pkl"):
+    if os.path.exists("./anno.tmp") and os.path.exists("./const_ex.pkl") and os.path.exists("./all_ex.pkl"):
         exon_t_gene = sp.loadtxt("./anno.tmp", delimiter='\t', dtype='string')
         const_exons = pickle.load(open("./const_ex.pkl", "rb"))
+        all_exons = pickle.load(open("./all_ex.pkl", "rb"))
     else:
-        exon_t_gene, const_exons = get_annotation_table(options.fn_anno, options.proteinCodingFilter)
+        exon_t_gene, const_exons, all_exons = get_annotation_table(options.fn_anno, options.proteinCodingFilter)
         sp.savetxt("./anno.tmp", exon_t_gene, delimiter='\t', fmt='%s')
         f = open("./const_ex.pkl", "wb")
         pickle.dump(const_exons, f)
+        f.close()
+        f = open("./all_ex.pkl", "wb")
+        pickle.dump(all_exons, f)
         f.close()
 
     if not os.path.exists("./count_data.pkl"):
@@ -513,7 +579,7 @@ def main():
         # a list of (constitutive) exons (start, end, (normalized) count) as value
 
     for i in range(len(file_names)):
-        # distr_over_gene_lengths(data[i], exon_t_gene, file_names[i])
+        avg_count_per_exon_histo(data[i], exon_t_gene, file_names[i])
         avg_count_per_exon(data[i], exon_t_gene, file_names[i])
 
 
