@@ -587,7 +587,7 @@ def main():
         f = open("./file_names.pkl", "wb")
         pickle.dump(file_names, f)
         f.close()
-        
+
     for i in range(len(file_names)):
         print ""
         #avg_count_per_exon_histo(data[i], exon_t_gene, file_names[i])
