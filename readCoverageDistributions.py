@@ -32,24 +32,22 @@ def avg_count_per_exon_histo(counts, regions, file_name):
         val = counts[gene[0]]
         if not np.sum(val[:, 3] > 0.000):  # 3 = transcript-length
             continue  # none of the exons is longer than 0
-        if gene[2] == "+":  # 2 = strand
-            start = val[0][0]  # first position
-            end = val[-1][1]  # last position
-        else:
-            start = val[-1][0]  # first position
-            end = val[0][1]  # last position
+
+        start = val[0][0]  # first position
+        end = val[-1][1]  # last position
         interval = (end - start) / 100.0
+
         for ex in val:
             if ex[0] < start:
                 print "Error: start was not smallest index"
+            if ex[1] > end:
+                print "Error: end was not biggest index"
             rel_pos = (ex[0] - start) / interval + (
                         (ex[1] - start) / interval - (ex[0] - start) / interval) / 2  # middle position of exon normalized to [0,100]
             if gene[2] == "-":
                 rel_pos = 100 - rel_pos
             if rel_pos < 0 or rel_pos > 100:
                 print "Position in unexpected range"
-                print rel_pos
-                print val
             if start > end:
                 print "Made a mistake at determining start and end"
             try:
@@ -428,7 +426,7 @@ def process_multi_transcript_genes(tcrpt):
     my_exons_int = my_exons_int[sidx_int, :]
 
     # see how often we got each item
-    all_exons, u_idx, dists = unique_rows(my_exons_int, index=True, counts=True)
+    dummy, u_idx, dists = unique_rows(my_exons_int, index=True, counts=True)
     n_match = sp.sum(dists == len(tcrpt))
 
     # make sure we have at least 2 constitutive exons
@@ -438,6 +436,8 @@ def process_multi_transcript_genes(tcrpt):
     # get constitutive exons
     i_const = dists == len(tcrpt)
     uq_const_ex = my_exons[u_idx][i_const]
+
+    all_exons = my_exons[u_idx]
 
     # get length of all transcripts
     my_ex_struct_l = []
@@ -603,25 +603,25 @@ def parse_options(argv):
 
 def main():
     options = parse_options(sys.argv)
-    if os.path.exists("./anno.tmp") and os.path.exists("./const_ex.pkl") and os.path.exists("./all_ex.pkl"):
-        exon_t_gene = sp.loadtxt("./anno.tmp", delimiter='\t', dtype='string')
-        const_exons = pickle.load(open("./const_ex.pkl", "rb"))
-        all_exons = pickle.load(open("./all_ex.pkl", "rb"))
+    if os.path.exists("./hg38/anno.tmp") and os.path.exists("./hg38/const_ex.pkl") and os.path.exists("./hg38/all_ex.pkl"):
+        exon_t_gene = sp.loadtxt("./hg38/anno.tmp", delimiter='\t', dtype='string')
+        const_exons = pickle.load(open("./hg38/const_ex.pkl", "rb"))
+        all_exons = pickle.load(open("./hg38/all_ex.pkl", "rb"))
     else:
         exon_t_gene, const_exons, all_exons = get_annotation_table(options.fn_anno, options.proteinCodingFilter)
-        sp.savetxt("./anno.tmp", exon_t_gene, delimiter='\t', fmt='%s')
-        f = open("./const_ex.pkl", "wb")
+        sp.savetxt("./hg38/anno.tmp", exon_t_gene, delimiter='\t', fmt='%s')
+        f = open("./hg38/const_ex.pkl", "wb")
         pickle.dump(const_exons, f)
         f.close()
-        f = open("./all_ex.pkl", "wb")
+        f = open("./hg38/all_ex.pkl", "wb")
         pickle.dump(all_exons, f)
         f.close()
 
-    if os.path.exists("./const_count_data.pkl") and os.path.exists("./all_count_data.pkl"):
+    if os.path.exists("./hg38/const_count_data.pkl") and os.path.exists("./hg38/all_count_data.pkl"):
         # file_names = ['FFPE_1', 'FFPE_2', 'FFPE_3', 'FFPE_4', 'FF_1', 'FF_2', 'FF_3', 'FF_4']
-        file_names = pickle.load(open("./file_names.pkl", "rb"))
-        const_data = pickle.load(open("./const_count_data.pkl", "rb"))
-        all_data = pickle.load(open("./all_count_data.pkl", "rb"))
+        file_names = pickle.load(open("./hg38/file_names.pkl", "rb"))
+        const_data = pickle.load(open("./hg38/const_count_data.pkl", "rb"))
+        all_data = pickle.load(open("./hg38/all_count_data.pkl", "rb"))
         # data is a dictionary with unique gene_IDs as keys and
         # a list of (constitutive) exons (start, end, (normalized) count) as value
     else:
@@ -634,19 +634,19 @@ def main():
             file_names = [options.fn_bam]
             const_data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
             all_data = get_counts_from_multiple_bam(file_names, exon_t_gene, all_exons)
-        f = open("./const_count_data.pkl", "wb")
+        f = open("./hg38/const_count_data.pkl", "wb")
         pickle.dump(const_data, f)
         f.close()
-        f = open("./all_count_data.pkl", "wb")
+        f = open("./hg38/all_count_data.pkl", "wb")
         pickle.dump(all_data, f)
         f.close()
-        f = open("./file_names.pkl", "wb")
+        f = open("./hg38/file_names.pkl", "wb")
         pickle.dump(file_names, f)
         f.close()
 
     for i in range(len(file_names)):
         f_name = file_names[i].split("/")[-1].strip(".bam")
-        #avg_count_per_exon_histo(all_data[i], exon_t_gene, f_name)
+        avg_count_per_exon_histo(all_data[i], exon_t_gene, f_name)
         #avg_count_per_exon(all_data[i], exon_t_gene, f_name)
 
 
