@@ -488,13 +488,11 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
                 exon_counts[e, 0] = start
                 exon_counts[e, 1] = end
                 exon_counts[e, 2] = end - start
-                cnt = 0.0
+                cnt = 1
                 try:
-                    for read in bam_file.fetch(chrm, start, end):
-                        if read.is_secondary:
-                            continue
-                        cnt += sp.sum((sp.array(read.positions) >= start) & (sp.array(read.positions) < end))
-                    cnt = sp.ceil(cnt / 50.0)
+                    cnt = int(sp.ceil(sp.sum(
+                        [sp.sum((sp.array(read.positions) >= start) & (sp.array(read.positions) < end)) for read in
+                         bam_file.fetch(str(chrm), start, end) if not read.is_secondary]) / 50.0))
                 except ValueError:
                     print >> sys.stderr, 'Ignored %s' % chrm
                     cnt = 1
