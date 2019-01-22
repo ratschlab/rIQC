@@ -25,6 +25,8 @@ ATTRIBUTE = 8   # semicolon-separated list of tag-value pairs
 
 
 def avg_count_per_exon_histo(counts, regions, file_name):
+    ''' Make a histogram
+    '''
     coords = dict()
     for gene in regions:
         if not gene[0] in counts:  # 0 = ID
@@ -122,10 +124,10 @@ def avg_count_per_exon(counts, regions, file_name):
 def distr_over_gene_lengths(counts, regions, file_name):
     gene_lengths = regions[:, 3]
     nmb_genes = gene_lengths.shape[0]
+    idx_s = np.argsort(gene_lengths)
 
     nmb_bins = 10
     for b in range(nmb_bins):
-        idx_s = np.argsort(gene_lengths)
         low_b = nmb_genes / nmb_bins * b
         up_b = nmb_genes / nmb_bins * (b + 1)
 
@@ -135,7 +137,7 @@ def distr_over_gene_lengths(counts, regions, file_name):
         for gene in regions:
             if not gene[0] in counts:
                 continue
-            if not gene[3] >= low_l and gene[3] < up_l:
+            if not (low_l <= gene[3] < up_l):
                 continue
             val = counts[gene[0]]
             if gene[2] == "+":
@@ -559,26 +561,37 @@ def main():
         pickle.dump(all_exons, f)
         f.close()
 
-    if not os.path.exists("./count_data.pkl"):
+    if os.path.exists("./const_count_data.pkl") and os.path.exists("./all_count_data.pkl"):
+        #file_names = ['FFPE_1', 'FFPE_2', 'FFPE_3', 'FFPE_4', 'FF_1', 'FF_2', 'FF_3', 'FF_4']
+        file_names = pickle.load(open("./file_names.pkl", "rb"))
+        const_data = pickle.load(open("./const_count_data.pkl", "rb"))
+        all_data = pickle.load(open("./all_count_data.pkl", "rb"))
+        # data is a dictionary with unique gene_IDs as keys and
+        # a list of (constitutive) exons (start, end, (normalized) count) as value
+    else:
         if options.dir_bam != '-':
             file_names = glob.glob(os.path.join(options.dir_bam, '*.bam'))
-            data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
+            const_data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
+            all_data = get_counts_from_multiple_bam(file_names, exon_t_gene, all_exons)
         else:
             assert options.fn_bam != '-'
             file_names = [options.fn_bam]
-            data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
-        f = open("./count_data.pkl", "wb")
-        pickle.dump(data, f)
+            const_data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
+            all_data = get_counts_from_multiple_bam(file_names, exon_t_gene, all_exons)
+        f = open("./const_count_data.pkl", "wb")
+        pickle.dump(const_data, f)
         f.close()
-    else:
-        file_names = ['FFPE_1', 'FFPE_2', 'FFPE_3', 'FFPE_4', 'FF_1', 'FF_2', 'FF_3', 'FF_4']
-        data = pickle.load(open("./count_data.pkl", "rb"))
-        # data is a dictionary with unique gene_IDs as keys and
-        # a list of (constitutive) exons (start, end, (normalized) count) as value
-
+        f = open("./all_count_data.pkl", "wb")
+        pickle.dump(all_data, f)
+        f.close()
+        f = open("./file_names.pkl", "wb")
+        pickle.dump(file_names, f)
+        f.close()
+        
     for i in range(len(file_names)):
-        avg_count_per_exon_histo(data[i], exon_t_gene, file_names[i])
-        avg_count_per_exon(data[i], exon_t_gene, file_names[i])
+        print ""
+        #avg_count_per_exon_histo(data[i], exon_t_gene, file_names[i])
+        #avg_count_per_exon(data[i], exon_t_gene, file_names[i])
 
 
 if __name__ == "__main__":
