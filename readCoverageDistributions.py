@@ -602,26 +602,30 @@ def parse_options(argv):
 
 
 def main():
+    gn_version = "hg38"
     options = parse_options(sys.argv)
-    if os.path.exists("./hg38/anno.tmp") and os.path.exists("./hg38/const_ex.pkl") and os.path.exists("./hg38/all_ex.pkl"):
-        exon_t_gene = sp.loadtxt("./hg38/anno.tmp", delimiter='\t', dtype='string')
-        const_exons = pickle.load(open("./hg38/const_ex.pkl", "rb"))
-        all_exons = pickle.load(open("./hg38/all_ex.pkl", "rb"))
+    if os.path.exists("./" + gn_version + "/anno.tmp") \
+            and os.path.exists("./" + gn_version + "/const_ex.pkl") \
+            and os.path.exists("./" + gn_version + "/all_ex.pkl"):
+        exon_t_gene = sp.loadtxt("./" + gn_version + "/anno.tmp", delimiter='\t', dtype='string')
+        const_exons = pickle.load(open("./" + gn_version + "/const_ex.pkl", "rb"))
+        all_exons = pickle.load(open("./" + gn_version + "/all_ex.pkl", "rb"))
     else:
         exon_t_gene, const_exons, all_exons = get_annotation_table(options.fn_anno, options.proteinCodingFilter)
-        sp.savetxt("./hg38/anno.tmp", exon_t_gene, delimiter='\t', fmt='%s')
-        f = open("./hg38/const_ex.pkl", "wb")
+        sp.savetxt("./" + gn_version + "/anno.tmp", exon_t_gene, delimiter='\t', fmt='%s')
+        f = open("./" + gn_version + "/const_ex.pkl", "wb")
         pickle.dump(const_exons, f)
         f.close()
-        f = open("./hg38/all_ex.pkl", "wb")
+        f = open("./" + gn_version + "/all_ex.pkl", "wb")
         pickle.dump(all_exons, f)
         f.close()
 
-    if os.path.exists("./hg38/const_count_data.pkl") and os.path.exists("./hg38/all_count_data.pkl"):
+    if os.path.exists("./" + gn_version + "/const_count_data.pkl") \
+            and os.path.exists("./" + gn_version + "/all_count_data.pkl"):
         # file_names = ['FFPE_1', 'FFPE_2', 'FFPE_3', 'FFPE_4', 'FF_1', 'FF_2', 'FF_3', 'FF_4']
-        file_names = pickle.load(open("./hg38/file_names.pkl", "rb"))
-        const_data = pickle.load(open("./hg38/const_count_data.pkl", "rb"))
-        all_data = pickle.load(open("./hg38/all_count_data.pkl", "rb"))
+        file_names = pickle.load(open("./" + gn_version + "/file_names.pkl", "rb"))
+        const_data = pickle.load(open("./" + gn_version + "/const_count_data.pkl", "rb"))
+        all_data = pickle.load(open("./" + gn_version + "/all_count_data.pkl", "rb"))
         # data is a dictionary with unique gene_IDs as keys and
         # a list of (constitutive) exons (start, end, (normalized) count) as value
     else:
@@ -634,20 +638,21 @@ def main():
             file_names = [options.fn_bam]
             const_data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
             all_data = get_counts_from_multiple_bam(file_names, exon_t_gene, all_exons)
-        f = open("./hg38/const_count_data.pkl", "wb")
+        f = open("./" + gn_version + "/const_count_data.pkl", "wb")
         pickle.dump(const_data, f)
         f.close()
-        f = open("./hg38/all_count_data.pkl", "wb")
+        f = open("./" + gn_version + "/all_count_data.pkl", "wb")
         pickle.dump(all_data, f)
         f.close()
-        f = open("./hg38/file_names.pkl", "wb")
+        f = open("./" + gn_version + "/file_names.pkl", "wb")
         pickle.dump(file_names, f)
         f.close()
 
     for i in range(len(file_names)):
         f_name = file_names[i].split("/")[-1].strip(".bam")
-        avg_count_per_exon_histo(all_data[i], exon_t_gene, f_name)
+        #avg_count_per_exon_histo(all_data[i], exon_t_gene, f_name)
         #avg_count_per_exon(all_data[i], exon_t_gene, f_name)
+        #histo_distr_over_gene_lengths(const_data[i], exon_t_gene, f_name)
 
 
 if __name__ == "__main__":
