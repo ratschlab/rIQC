@@ -13,213 +13,261 @@ import matplotlib.pyplot as plt
 NMB_CHR = 23
 
 #  GTF column numbers
-SEQ_NAME = 0    # name of chromosome or scaffold
-SOURCE = 1      # name of program that generated this feature
-FEATURE = 2     # feature type name (e.g. "gene", "transcript", "exon") / type of feature (term or accession from SOFA sequence ontology)
-START = 3       # start position of feature (seq numbering starting at 1)
-END = 4         # end position of feature (seq numbering starting at 1)
-SCORE = 5       # a floating point value
-STRAND = 6      # + (forward) or - (reverse)
-FRAME = 7       # 0/1/2 : position in codon
-ATTRIBUTE = 8   # semicolon-separated list of tag-value pairs
+ANNO_SEQ_NAME = 0    # name of chromosome or scaffold
+ANNO_SOURCE = 1      # name of program that generated this feature
+ANNO_FEATURE = 2     # feature type name (e.g. "gene", "transcript", "exon") / type of feature (term or accession from SOFA sequence ontology)
+ANNO_START = 3       # start position of feature (seq numbering starting at 1)
+ANNO_END = 4         # end position of feature (seq numbering starting at 1)
+ANNO_SCORE = 5       # a floating point value
+ANNO_STRAND = 6      # + (forward) or - (reverse)
+ANNO_FRAME = 7       # 0/1/2 : position in codon
+ANNO_ATTRIBUTE = 8   # semicolon-separated list of tag-value pairs
+
+#  COUNTS
+CNT_ST = 0
+CNT_END = 1
+CNT_LEN = 2
+CNT_CNT = 3
+
+#  REGIONS / EXON_T_GENE
+REG_ID = 0
+REG_CHR = 1
+REG_STR = 2
+REG_LEN = 3
 
 
-def avg_count_per_exon_histo(counts, regions, file_name):
-    coords = dict()
+def prepare_outlier_filter(counts, regions, file_name):
+    all_counts = []
     for gene in regions:
-        if not gene[0] in counts:  # 0 = gene_ID
+        if not gene[REG_ID] in counts:
             continue  # we have no counts for that gene
-        val = counts[gene[0]]
-        if not np.sum(val[:, 3] > 0.000):  # 3 = transcript-length
-            continue  # none of the exons is longer than 0
-
-        start = val[0][0]  # first position
-        end = val[-1][1]  # last position
-        interval = (end - start) / 100.0
-
+        val = counts[gene[REG_ID]]
         for ex in val:
-            if ex[0] < start:
-                print "Error: start was not smallest index"
-            if ex[1] > end:
-                print "Error: end was not biggest index"
-            rel_pos = (ex[0] - start) / interval + (
-                        (ex[1] - start) / interval - (ex[0] - start) / interval) / 2  # middle position of exon normalized to [0,100]
-            if gene[2] == "-":
-                rel_pos = 100 - rel_pos
-            if rel_pos < 0 or rel_pos > 100:
-                print "Position in unexpected range"
-            if start > end:
-                print "Made a mistake at determining start and end"
-            try:
-                coords[np.floor(rel_pos / 10.0)].append(ex[3])
-            except KeyError:
-                coords[np.floor(rel_pos / 10.0)] = [ex[3]]
-
-    for key in coords:
-        p1 = plt.bar(10 * key, len(filter(lambda ex_l: (ex_l > 0), coords[key])), width=2, color='orchid', align='edge')
-        p2 = plt.bar((10 * key) + 2, len(filter(lambda ex_l: (ex_l > 0.5), coords[key])), width=2, color='royalblue', align='edge')
-        p3 = plt.bar((10 * key) + 4, len(filter(lambda ex_l: (ex_l > 1), coords[key])), width=2, color='firebrick', align='edge')
-        p4 = plt.bar((10 * key) + 6, len(filter(lambda ex_l: (ex_l > 2), coords[key])), width=2, color='orange', align='edge')
-        p5 = plt.bar((10 * key) + 8, len(filter(lambda ex_l: (ex_l > 4), coords[key])), width=2, color='olivedrab', align='edge')
-
-    plt.xlim(0, 100)
-    plt.ylim(0, 1800)
-    plt.legend([p1, p2, p3, p4, p5], ["> 0", "> 0.5", "> 1", "> 2", "> 4"])
-    plt.title("All Exons - all lengths (%s)" % file_name)
-    plt.ylabel("Number of exons longer than threshold")
-    plt.xlabel("Relative Location (10 areas)")
-
-    plt.savefig("../2018_degradationPaper/Coverage_hg38/histo_allExons_allLengths_%s" % file_name)
-    plt.show()
+            all_counts.append(ex[CNT_CNT])
+    return np.percentile(all_counts, q=99.9)
 
 
-def avg_count_per_exon(counts, regions, file_name):
-    # regions is array with rows "gene_ID   chr   strand   transcript_length"
-    # counts is dict with gene_ID as key and numpy-array of exons (rows) with start, end, normalized count (columns) as value
+def avg_count_per_exon(counts, regions, file_name, cut_off, histo):
+
+    coords = dict()
+
     for gene in regions:
-        if not gene[0] in counts:  # 0 = ID
-            continue
-        val = counts[gene[0]]
-        if not np.sum(val[:, 3] > 0.000):
+        if not gene[REG_ID] in counts:
+            continue  # we have no counts for that gene
+        val = counts[gene[REG_ID]]
+        if not np.sum(val[:, CNT_CNT] > 0.000):
             continue  # none of the exons is longer than 0
-        if gene[2] == "+":  # 2 = strand
-            start = val[0][0]  # first position
-            end = val[-1][1]  # last position
-        else:
-            end = val[0][1]  # last position
-            start = val[-1][0]  # first position
-        interval = (end - start) / 100.0
+
+        last_end = val[0][CNT_ST] - 1  # need this for "cutting together" exons
+
+        take_gene = True
         for ex in val:
-            if ex[0] < start:
+            if ex[CNT_CNT] > cut_off:
+                take_gene = False
+                break
+            if ex[CNT_ST] > last_end:
+                ex[CNT_END] = ex[CNT_END] - (ex[CNT_ST] - (last_end + 1))
+                ex[CNT_ST] = last_end + 1
+                last_end = ex[CNT_END]
+            # if exons overlap:
+            else:
+                print "CAUTION: Exons overlap"
+                last_end = ex[CNT_END]
+
+        if not take_gene:
+            continue
+
+        start = val[0][CNT_ST]
+        end = val[-1][CNT_END]
+        interval = (end - start) / 1000.0
+
+        xs = []
+        ys = []
+        bases = np.zeros(1001)
+        for ex in val:
+            if ex[CNT_ST] < start:
                 print "Error: start was not smallest index"
-            if ex[1] > end:
+            if ex[CNT_END] > end:
                 print "Error: end was not biggest index"
-            rel_pos = (ex[0]-start)/interval + ((ex[1]-start)/interval - (ex[0]-start)/interval) / 2  # middle position of exon normalized to [0,100]
-            if gene[2] == "-":
-                rel_pos = 100 - rel_pos
-            if rel_pos < 0 or rel_pos > 100:
-                print "Position in unexpected range"
-            if start > end:
+
+            rel_pos_start = int(np.ceil((ex[CNT_ST] - start) / interval))
+            rel_pos_end = int(np.floor((ex[CNT_END] - start) / interval))
+            if gene[REG_STR] == "-":
+                rel_pos_start, rel_pos_end = 1000 - rel_pos_end, 1000 - rel_pos_start
+            if rel_pos_start < 0 or rel_pos_start > 1000 or rel_pos_end < 0 or rel_pos_end > 1000:
+                print "Start-Position in unexpected range " + str(rel_pos_start) + " or End-Position " + str(rel_pos_end)
+            if start > end or rel_pos_start > rel_pos_end:
                 print "Made a mistake at determining start and end"
 
-            if ex[3] > 0:
-                plt.plot(rel_pos, ex[3], ".", color="firebrick")
+            if histo:
+                for i in range(rel_pos_start, rel_pos_end+1, 1):
+                    bases[i] = ex[CNT_CNT]
             else:
-                plt.plot(rel_pos, 0, ".", color="firebrick")
+                if gene[REG_STR] == "-":
+                    xs.insert(0, rel_pos_end)
+                    ys.insert(0, ex[CNT_CNT])
+                    xs.insert(0, rel_pos_start)
+                    ys.insert(0, ex[CNT_CNT])
+                else:
+                    xs.append(rel_pos_start)
+                    ys.append(ex[CNT_CNT])
+                    xs.append(rel_pos_end)
+                    ys.append(ex[CNT_CNT])
+        if histo:
+            for i in range(0, 10, 1):
+                try:
+                    coords[i].append(np.median(bases[100*i:100*(i+1)]))
+                except KeyError:
+                    coords[i] = [np.median(bases[100*i:100*(i+1)])]
 
-    plt.xlim(0, 100)
-    plt.ylim(0, 100)
-    plt.title("All Exons - all lengths (%s)" % file_name)
-    plt.ylabel("Normalized Count")
-    plt.xlabel("Relative Location")
+        else:
+            plt.plot(xs, ys, "--", color="firebrick")
 
-    plt.savefig("../2018_degradationPaper/Coverage_hg38/allExons_allLengths_%s" % file_name)
-    plt.show()
+    if histo:
+
+        for key in coords:
+            p1 = plt.bar((10 * key), len(filter(lambda ex_l: (ex_l > 0.5), coords[key])), width=2.5, color='royalblue', align='edge')
+            p2 = plt.bar((10 * key) + 2.5, len(filter(lambda ex_l: (ex_l > 1), coords[key])), width=2.5, color='firebrick', align='edge')
+            p3 = plt.bar((10 * key) + 5, len(filter(lambda ex_l: (ex_l > 2), coords[key])), width=2.5, color='orange', align='edge')
+            p4 = plt.bar((10 * key) + 7.5, len(filter(lambda ex_l: (ex_l > 4), coords[key])), width=2.5, color='olivedrab', align='edge')
+
+        plt.xlim(0, 100)
+        plt.ylim(0, 380)
+        plt.legend([p1, p2, p3, p4], ["> 0.5", "> 1", "> 2", "> 4"])
+        plt.title("Constitutive Exons - all lengths (%s)" % file_name)
+        plt.ylabel("Number of exons longer than threshold")
+        plt.xlabel("Relative Location (10 areas)")
+
+        plt.savefig("../2018_degradationPaper/Coverage_hg38/histo_constExons_allLengths_%s" % file_name)
+        plt.show()
+
+    else:
+        plt.xlim(0, 1000)
+        plt.ylim(0, max(cut_off, 40))
+        plt.title("Constitutive Exons - all lengths (%s)" % file_name)
+        plt.ylabel("Normalized Count")
+        plt.xlabel("Relative Location")
+
+        plt.savefig("../2018_degradationPaper/Coverage_hg38/constExons_allLengths_%s" % file_name)
+        plt.show()
 
 
-def histo_distr_over_gene_lengths(counts, regions, file_name):
+def distr_over_gene_lengths(counts, regions, file_name, cut_off, histo):
     gene_lengths = regions[:, 3]
     nmb_genes = gene_lengths.shape[0]
     idx_s = np.argsort(gene_lengths)
 
-    nmb_bins = 10
+    nmb_bins = 4
     for b in range(nmb_bins):
         low_b = nmb_genes / nmb_bins * b
-        up_b = nmb_genes / nmb_bins * (b + 1)
+        up_b = nmb_genes / nmb_bins * (b + 1) - 1
 
         low_l = gene_lengths[idx_s[low_b]]
         up_l = gene_lengths[idx_s[up_b]]
 
         coords = dict()
-        for gene in regions:
-            if not gene[0] in counts:
-                continue
-            if not (low_l <= gene[3] < up_l):
-                continue
-            val = counts[gene[0]]
-            if gene[2] == "+":
-                start = val[0][0]  # first position
-                end = val[-1][1]  # last position
-            else:
-                end = val[0][1]  # last position
-                start = val[-1][0]  # first position
-            interval = (end - start) / 100
-            for ex in val:
-                rel_pos = (ex[0]-start)/interval + \
-                          ((ex[1]-start)/interval - (ex[0]-start)/interval) / 2  # middle position of exon normalized to [0,100]
-                if rel_pos < 0 or rel_pos > 100:
-                    print "Position in unexpected range"
-                if start > end:
-                    print "Made a mistake at determining start and end"
-                try:
-                    coords[np.floor(rel_pos / 10.0)].append(ex[3])
-                except KeyError:
-                    coords[np.floor(rel_pos / 10.0)] = [ex[3]]
-
-        for key in coords:
-            p1 = plt.bar(10 * key, len(filter(lambda ex_l: (ex_l > 0), coords[key])), width=2, color='orchid', align='edge')
-            p2 = plt.bar((10 * key) + 2, len(filter(lambda ex_l: (ex_l > 0.5), coords[key])), width=2, color='royalblue', align='edge')
-            p3 = plt.bar((10 * key) + 4, len(filter(lambda ex_l: (ex_l > 1), coords[key])), width=2, color='firebrick', align='edge')
-            p4 = plt.bar((10 * key) + 6, len(filter(lambda ex_l: (ex_l > 2), coords[key])), width=2, color='orange', align='edge')
-            p5 = plt.bar((10 * key) + 8, len(filter(lambda ex_l: (ex_l > 4), coords[key])), width=2, color='olivedrab', align='edge')
-
-        plt.xlim(0, 100)
-        plt.ylim(0, 1100)
-        plt.legend([p1, p2, p3, p4, p5], ["> 0", "> 0.5", "> 1", "> 2", "> 4"])
-        plt.title("Constitutive Exons - bin %i (%s)" % (b+1, file_name))
-        plt.ylabel("Number of exons longer than threshold")
-        plt.xlabel("Relative Location (10 areas)")
-
-        plt.savefig("../2018_degradationPaper/Coverage_hg38/histo_constitutive_%s_bin%i" % (file_name, b+1))
-        plt.show()
-
-
-# Expression distribution over normalized gene length (in different length-bins-> same as already used; constitutive and not)
-# # Generate average coverage distribution across all genes within that bin after projecting all genes in bin onto one length
-def distr_over_gene_lengths(counts, regions, file_name):
-    gene_lengths = regions[:, 3]
-    nmb_genes = gene_lengths.shape[0]
-    idx_s = np.argsort(gene_lengths)
-
-    nmb_bins = 10
-    for b in range(nmb_bins):
-        low_b = nmb_genes / nmb_bins * b
-        up_b = nmb_genes / nmb_bins * (b + 1)
-
-        low_l = gene_lengths[idx_s[low_b]]
-        up_l = gene_lengths[idx_s[up_b]]
 
         for gene in regions:
-            if not gene[0] in counts:
+            if not gene[REG_ID] in counts:
+                continue  # we have no counts for that gene
+            if not (low_l <= gene[REG_LEN] < up_l):
                 continue
-            if not (low_l <= gene[3] < up_l):
-                continue
-            val = counts[gene[0]]
-            if gene[2] == "+":
-                start = val[0][0]  # first position
-                end = val[-1][1]  # last position
-            else:
-                end = val[0][1]  # last position
-                start = val[-1][0]  # first position
-            interval = (end - start) / 100
+            val = counts[gene[REG_ID]]
+            if not np.sum(val[:, CNT_CNT] > 0.000):
+                continue  # none of the exons is longer than 0
+
+            last_end = val[0][CNT_ST] - 1  # need this for "cutting together" exons
+
+            take_gene = True
             for ex in val:
-                rel_pos = (ex[0]-start)/interval + \
-                          ((ex[1]-start)/interval - (ex[0]-start)/interval) / 2  # middle position of exon normalized to [0,100]
-                if rel_pos < 0 or rel_pos > 100:
-                    print "Position in unexpected range"
-                if start > end:
-                    print "Made a mistake at determining start and end"
-                if ex[3] > 0:
-                    plt.plot(rel_pos, ex[3], ".", color="firebrick")
+                if ex[CNT_CNT] > cut_off:
+                    take_gene = False
+                    break
+                if ex[CNT_ST] > last_end:
+                    ex[CNT_END] = ex[CNT_END] - (ex[CNT_ST] - (last_end + 1))
+                    ex[CNT_ST] = last_end + 1
+                    last_end = ex[CNT_END]
+                # if exons overlap:
                 else:
-                    plt.plot(rel_pos, 0, ".", color="firebrick")
+                    print "CAUTION: Exons overlap"
+                    last_end = ex[CNT_END]
 
-        plt.title("Constitutive Exons - bin %i (%s)" % (b+1, file_name))
-        plt.ylabel("Normalized Count")
-        plt.xlabel("Relative Location")
+            if not take_gene:
+                continue
 
-        plt.savefig("../2018_degradationPaper/Coverage_hg38/constitutive_%s_bin%i" % (file_name, b+1))
-        plt.show()
+            start = val[0][CNT_ST]
+            end = val[-1][CNT_END]
+            interval = (end - start) / 1000.0
+
+            xs = []
+            ys = []
+            bases = np.zeros(1001)
+            for ex in val:
+                if ex[CNT_ST] < start:
+                    print "Error: start was not smallest index"
+                if ex[CNT_END] > end:
+                    print "Error: end was not biggest index"
+
+                rel_pos_start = int(np.ceil((ex[CNT_ST] - start) / interval))
+                rel_pos_end = int(np.floor((ex[CNT_END] - start) / interval))
+                if gene[REG_STR] == "-":
+                    rel_pos_start, rel_pos_end = 1000 - rel_pos_end, 1000 - rel_pos_start
+                if rel_pos_start < 0 or rel_pos_start > 1000 or rel_pos_end < 0 or rel_pos_end > 1000:
+                    print "Start-Position in unexpected range " + str(rel_pos_start) + " or End-Position " + str(rel_pos_end)
+                if start > end or rel_pos_start > rel_pos_end:
+                    print "Made a mistake at determining start and end"
+
+                if histo:
+                    for i in range(rel_pos_start, rel_pos_end+1, 1):
+                        bases[i] = ex[CNT_CNT]
+                else:
+                    if gene[REG_STR] == "-":
+                        xs.insert(0, rel_pos_end)
+                        ys.insert(0, ex[CNT_CNT])
+                        xs.insert(0, rel_pos_start)
+                        ys.insert(0, ex[CNT_CNT])
+                    else:
+                        xs.append(rel_pos_start)
+                        ys.append(ex[CNT_CNT])
+                        xs.append(rel_pos_end)
+                        ys.append(ex[CNT_CNT])
+            if histo:
+                for i in range(0, 10, 1):
+                    try:
+                        coords[i].append(np.median(bases[100 * i:100 * (i + 1)]))
+                    except KeyError:
+                        coords[i] = [np.median(bases[100 * i:100 * (i + 1)])]
+
+            else:
+                plt.plot(xs, ys, "--", color="firebrick")
+
+        if histo:
+
+            for key in coords:
+                p1 = plt.bar((10 * key), len(filter(lambda ex_l: (ex_l > 0.5), coords[key])), width=2.5, color='royalblue', align='edge')
+                p2 = plt.bar((10 * key) + 2.5, len(filter(lambda ex_l: (ex_l > 1), coords[key])), width=2.5, color='firebrick', align='edge')
+                p3 = plt.bar((10 * key) + 5, len(filter(lambda ex_l: (ex_l > 2), coords[key])), width=2.5, color='orange', align='edge')
+                p4 = plt.bar((10 * key) + 7.5, len(filter(lambda ex_l: (ex_l > 4), coords[key])), width=2.5, color='olivedrab', align='edge')
+
+            plt.xlim(0, 100)
+            plt.ylim(0, 130)
+            plt.legend([p1, p2, p3, p4], ["> 0.5", "> 1", "> 2", "> 4"])
+            plt.title("Constitutive Exons - bin %i (%s)" % (b + 1, file_name))
+            plt.ylabel("Number of exons longer than threshold")
+            plt.xlabel("Relative Location (10 areas)")
+
+            plt.savefig("../2018_degradationPaper/Coverage_hg38/histo_constitutive_%s_bin%i" % (file_name, b + 1))
+            plt.show()
+
+        else:
+            plt.xlim(0, 1000)
+            plt.ylim(0, max(cut_off, 40))
+            plt.title("Constitutive Exons - bin %i (%s)" % (b + 1, file_name))
+            plt.ylabel("Normalized Count")
+            plt.xlabel("Relative Location")
+
+            plt.savefig("../2018_degradationPaper/Coverage_hg38/constitutive_%s_bin%i" % (file_name, b + 1))
+            plt.show()
 
 
 # Distribution of length of last-constitutive exons (joint and in different length bins)
@@ -234,43 +282,50 @@ def last_const_exon_pos():
 ###############################################################################################
 
 
+def get_tags(tagline):
+    """Extract tags from given tagline in a gtf file"""
+
+    tags = dict()
+    for t in tagline.strip(';').split(';'):
+        tt = t.strip(' ').split(' ')
+        tags[tt[0]] = tt[1].strip('"')
+    return tags
+
+
 def get_overlap_genes(fn_anno):
     """
     Returns a list of gene names which are overlapping
     """
 
     data = []
-    # For all gene entries
+    # For all gene entries - extract unique ID
     for l in open(fn_anno, 'r'):
-        if l[SEQ_NAME] == '#':
+        if l[ANNO_SEQ_NAME] == '#':
             continue  # comments
         l_spl = l.strip('\n').split('\t')
         if l_spl[2].lower() != 'gene':
             continue
-        tags = dict()
-        for t in l_spl[ATTRIBUTE].strip(';').split(';'):
-            tt = t.strip(' ').split(' ')
-            tags[tt[0]] = tt[1].strip('"')
-        data.append([tags['gene_id'], '%s:%s-%s' % (l_spl[SEQ_NAME], l_spl[START], l_spl[END])])
+        tags = get_tags(l_spl[ANNO_ATTRIBUTE])
+        data.append([tags['gene_id'], '%s:%s-%s' % (l_spl[ANNO_SEQ_NAME], l_spl[ANNO_START], l_spl[ANNO_END])])
 
     data = sp.array(data)
 
     # fix positions
-    pos = data[:, 1]
-    pos = sp.array([x.split(':')[0] + '-' + x.split(':')[1] for x in pos])
-    pos = sp.array([x.strip('chr') for x in pos])
-    pos = sp.array([x.split('-') for x in pos])
+    pos = data[:, 1]  # example-entry:  chr1:11869-14409
+    pos = sp.array([x.split(':')[0] + '-' + x.split(':')[1] for x in pos])  # example-entry:  chr1-11869-14409
+    pos = sp.array([x.strip('chr') for x in pos])  # example-entry:  1-11869-14409
+    pos = sp.array([x.split('-') for x in pos])  # example-entry:  ['1' '11869' '14409']
     pos[pos[:, 0] == 'X', 0] = '23'
     pos[pos[:, 0] == 'Y', 0] = '24'
 
     # filter weird things like mitochondria etc.
-    i_ok = np.core.defchararray.isdigit(pos[:, 0])
+    i_ok = np.core.defchararray.isdigit(pos[:, 0])  # boolean array of same size
     pos = pos[i_ok, :]
     data = data[i_ok, :]
-    pos = pos.astype('int')
+    pos = pos.astype('int')  # example-entry array([    1, 11869, 14409])
 
     # sort everything nicely
-    sidx = sp.lexsort((pos[:, 2], pos[:, 1], pos[:, 0]))
+    sidx = sp.lexsort((pos[:, 2], pos[:, 1], pos[:, 0]))  # last is primary sorting-key
     pos = pos[sidx, :]
     data = data[sidx, :]
 
@@ -308,7 +363,7 @@ def get_overlap_genes(fn_anno):
             my_overlap_genes.extend(overlap_genes_st.tolist())
         if sp.unique(overlap_genes_end).shape[0] > 1:
             my_overlap_genes.extend(overlap_genes_end.tolist())
-    return sp.unique(my_overlap_genes)
+    return sp.unique(my_overlap_genes)  # np-array of gene-IDs
 
 
 def reading_anno(fn_anno, overlap_genes, protein_coding_filter):
@@ -327,34 +382,28 @@ def reading_anno(fn_anno, overlap_genes, protein_coding_filter):
     # collect transcript information
     transcripts = dict()  # a dictionary with transcript IDs as keys and a list of exons (start-end) as value
     for l in open(fn_anno, 'r'):
-        if l[SEQ_NAME] == '#':
+        if l[ANNO_SEQ_NAME] == '#':
             continue
 
         l_spl = l.strip('\n').split('\t')
 
-        if l_spl[FEATURE].lower() != 'exon':
+        if l_spl[ANNO_FEATURE].lower() != 'exon':
             continue
-        tags = dict()
-        for t in l_spl[ATTRIBUTE].strip(';').split(';'):
-            tt = t.strip(' ').split(' ')
-            tags[tt[0]] = tt[1].strip('"')
+        tags = get_tags(l_spl[ANNO_ATTRIBUTE])
         try:
-            transcripts[tags['transcript_id']].append('-'.join([l_spl[START], l_spl[END]]))
+            transcripts[tags['transcript_id']].append('-'.join([l_spl[ANNO_START], l_spl[ANNO_END]]))
         except KeyError:
-            transcripts[tags['transcript_id']] = ['-'.join([l_spl[START], l_spl[END]])]
+            transcripts[tags['transcript_id']] = ['-'.join([l_spl[ANNO_START], l_spl[ANNO_END]])]
 
     # read transcript annotation
     for l in open(fn_anno, 'r'):
-        if l[SEQ_NAME] == '#':
+        if l[ANNO_SEQ_NAME] == '#':
             continue
         l_spl = l.strip('\n').split('\t')
 
-        if l_spl[FEATURE].lower() != 'transcript':
+        if l_spl[ANNO_FEATURE].lower() != 'transcript':
             continue
-        tags = dict()
-        for t in l_spl[ATTRIBUTE].strip(';').split(';'):
-            tt = t.strip(' ').split(' ')
-            tags[tt[0]] = tt[1].strip('"')
+        tags = get_tags(l_spl[ANNO_ATTRIBUTE])
 
         key = tags['gene_id']
         gene_type = tags['gene_type']
@@ -363,13 +412,13 @@ def reading_anno(fn_anno, overlap_genes, protein_coding_filter):
         if key in overlap_genes:
             continue
         # remove non-chr-contigs
-        if l_spl[SEQ_NAME].lower() not in chr_whitelist:
+        if l_spl[ANNO_SEQ_NAME].lower() not in chr_whitelist:
             continue
         # filter for protein-coding genes only (if filter turned on)
         if protein_coding_filter and (gene_type != "protein_coding"):
             continue
 
-        value = '%s:%s:%s' % (l_spl[SEQ_NAME], ','.join(transcripts[tags['transcript_id']]), l_spl[STRAND])
+        value = '%s:%s:%s' % (l_spl[ANNO_SEQ_NAME], ','.join(transcripts[tags['transcript_id']]), l_spl[ANNO_STRAND])
 
         try:
             data[key].append(value)
@@ -448,7 +497,7 @@ def process_multi_transcript_genes(tcrpt):
 
 
 def read_annotation_file(fn_anno, protein_coding_filter):
-    # get list of overlapping genes
+    # get np-array of IDs of overlapping genes
     overlap_genes = get_overlap_genes(fn_anno)
 
     # reading in annotation file
@@ -476,9 +525,8 @@ def read_annotation_file(fn_anno, protein_coding_filter):
             all_exons[gid] = a_e
             new_data.append([gid] + temp)
     new_data = sp.array(new_data)
-    s_idx = sp.argsort(new_data[:, -1])
+    s_idx = sp.argsort(new_data[:, 0])  # filter gene with no name
     new_data = new_data[s_idx, :]
-    # filter gene with no name
 
     # new_data is array with entries: gene_ID, seq_name, strand, (median) transcript-length
     return sp.array(new_data), const_exons, all_exons
@@ -516,11 +564,9 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
     t0 = time.time()
 
     # Sort regions by chr
-    if len(regions.shape) > 1:
-        sidx = sp.argsort(regions[:, 1])  # seq_name
-    else:
+    if len(regions.shape) <= 1:
         exit("regions.shape was not > 1")
-        # sidx = sp.argsort(np.vstack((regions[1], regions[0])))
+    sidx = sp.argsort(regions[:, 1])  # seq_name
 
     for i, ii in enumerate(sidx):
         if i > 0 and i % 100 == 0:
@@ -533,8 +579,8 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
 
         if len(regions.shape) == 1:
             exit("regions.shape == 1")
-        # else
         chrm = rec[1]
+
         if chrm not in ref_seqs:
             chrm = chrm.strip('chr')
             if chrm not in ref_seqs:
@@ -553,7 +599,6 @@ def get_counts_from_single_bam(fn_bam, regions, exons):
                          bam_file.fetch(str(chrm), start, end) if not read.is_secondary]) / 50.0))
                 except ValueError:
                     print >> sys.stderr, 'Ignored %s' % chrm
-                    cnt = 1
                 finally:
                     exon_counts[e, 3] = cnt / exon_counts[e, 2]
         cnts[rec[0]] = exon_counts
@@ -650,9 +695,9 @@ def main():
 
     for i in range(len(file_names)):
         f_name = file_names[i].split("/")[-1].strip(".bam")
-        #avg_count_per_exon_histo(all_data[i], exon_t_gene, f_name)
-        #avg_count_per_exon(all_data[i], exon_t_gene, f_name)
-        #histo_distr_over_gene_lengths(const_data[i], exon_t_gene, f_name)
+        cut_off = prepare_outlier_filter(const_data[i], exon_t_gene, f_name)
+        #avg_count_per_exon(const_data[i], exon_t_gene, f_name, cut_off, histo=False)
+        distr_over_gene_lengths(const_data[i], exon_t_gene, f_name, cut_off, histo=False)
 
 
 if __name__ == "__main__":
