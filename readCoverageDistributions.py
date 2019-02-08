@@ -454,6 +454,7 @@ def process_single_transcript_genes(tcrpt):
     # format is ID:exon1_positions,exon2_positions,...,exonN_positions:STRAND
 
     exons = tcrpt.split(':')[1].split(',')  # as list
+    exons.sort()
 
     return [tcrpt.split(':')[0], tcrpt.split(':')[2], get_transcript_length(tcrpt)], exons
 
