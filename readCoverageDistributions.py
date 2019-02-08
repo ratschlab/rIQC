@@ -504,9 +504,14 @@ def read_annotation_file(fn_anno, protein_coding_filter):
     # reading in annotation file
     data = reading_anno(fn_anno, overlap_genes, protein_coding_filter)
     # data is a dictionary with gene IDs as keys and a list of transcripts with format CHR:listOfExons(e1,e2,...):STRAND as values
-    f = open("./hg38/exon_lookup.pkl", "wb")
-    pickle.dump(data, f)
-    f.close()
+
+    exon_lookup = dict()
+    for gid in data.keys():
+        for t in data[gid]:
+            try:
+                exon_lookup[gid].append(t.split(":")[1])
+            except KeyError:
+                exon_lookup[gid] = [t.split(":")[1]]
 
     uq_g_id = data.keys()  # unique gene ids
     new_data = []
@@ -533,18 +538,18 @@ def read_annotation_file(fn_anno, protein_coding_filter):
     new_data = new_data[s_idx, :]
 
     # new_data is array with entries: gene_ID, seq_name, strand, (median) transcript-length
-    return sp.array(new_data), const_exons, all_exons
+    return sp.array(new_data), const_exons, all_exons, exon_lookup
 
 
 def get_annotation_table(fn_anno, protein_coding_filter):
 
     if fn_anno.lower().endswith('gtf'):
-        exon_t_gene, const_exons, all_exons = read_annotation_file(fn_anno, protein_coding_filter)
+        exon_t_gene, const_exons, all_exons, exon_lookup = read_annotation_file(fn_anno, protein_coding_filter)
     else:
         raise Exception(
             "Only annotation files in format gtf are supported. File name must end accordingly")
 
-    return exon_t_gene, const_exons, all_exons
+    return exon_t_gene, const_exons, all_exons, exon_lookup
 
 
 def get_counts_from_single_bam(fn_bam, regions, exons):
@@ -658,9 +663,10 @@ def main():
             and os.path.exists("./" + gn_version + "/all_ex.pkl"):
         exon_t_gene = sp.loadtxt("./" + gn_version + "/anno.tmp", delimiter='\t', dtype='string')
         const_exons = pickle.load(open("./" + gn_version + "/const_ex.pkl", "rb"))
-        #all_exons = pickle.load(open("./" + gn_version + "/all_ex.pkl", "rb"))
+        all_exons = pickle.load(open("./" + gn_version + "/all_ex.pkl", "rb"))
+        exon_lookup = pickle.load(open("./" + gn_version + "/exon_lookup.pkl", "rb"))
     else:
-        exon_t_gene, const_exons, all_exons = get_annotation_table(options.fn_anno, options.proteinCodingFilter)
+        exon_t_gene, const_exons, all_exons, exon_lookup = get_annotation_table(options.fn_anno, options.proteinCodingFilter)
         sp.savetxt("./" + gn_version + "/anno.tmp", exon_t_gene, delimiter='\t', fmt='%s')
         f = open("./" + gn_version + "/const_ex.pkl", "wb")
         pickle.dump(const_exons, f)
@@ -668,13 +674,16 @@ def main():
         f = open("./" + gn_version + "/all_ex.pkl", "wb")
         pickle.dump(all_exons, f)
         f.close()
+        f = open("./" + gn_version + "/exon_lookup.pkl", "wb")
+        pickle.dump(exon_lookup, f)
+        f.close()
 
     if os.path.exists("./" + gn_version + "/const_count_data.pkl") \
             and os.path.exists("./" + gn_version + "/all_count_data.pkl"):
         # file_names = ['FFPE_1', 'FFPE_2', 'FFPE_3', 'FFPE_4', 'FF_1', 'FF_2', 'FF_3', 'FF_4']
         file_names = pickle.load(open("./" + gn_version + "/file_names.pkl", "rb"))
         const_data = pickle.load(open("./" + gn_version + "/const_count_data.pkl", "rb"))
-        all_data = pickle.load(open("./" + gn_version + "/all_count_data.pkl", "rb"))
+        #all_data = pickle.load(open("./" + gn_version + "/all_count_data.pkl", "rb"))
         # data is a dictionary with unique gene_IDs as keys and
         # a list of (constitutive) exons (start, end, (normalized) count) as value
     else:
