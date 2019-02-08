@@ -504,6 +504,9 @@ def read_annotation_file(fn_anno, protein_coding_filter):
     # reading in annotation file
     data = reading_anno(fn_anno, overlap_genes, protein_coding_filter)
     # data is a dictionary with gene IDs as keys and a list of transcripts with format CHR:listOfExons(e1,e2,...):STRAND as values
+    f = open("./hg38/exon_lookup.pkl", "wb")
+    pickle.dump(data, f)
+    f.close()
 
     uq_g_id = data.keys()  # unique gene ids
     new_data = []
@@ -655,7 +658,7 @@ def main():
             and os.path.exists("./" + gn_version + "/all_ex.pkl"):
         exon_t_gene = sp.loadtxt("./" + gn_version + "/anno.tmp", delimiter='\t', dtype='string')
         const_exons = pickle.load(open("./" + gn_version + "/const_ex.pkl", "rb"))
-        all_exons = pickle.load(open("./" + gn_version + "/all_ex.pkl", "rb"))
+        #all_exons = pickle.load(open("./" + gn_version + "/all_ex.pkl", "rb"))
     else:
         exon_t_gene, const_exons, all_exons = get_annotation_table(options.fn_anno, options.proteinCodingFilter)
         sp.savetxt("./" + gn_version + "/anno.tmp", exon_t_gene, delimiter='\t', fmt='%s')
@@ -678,18 +681,18 @@ def main():
         if options.dir_bam != '-':
             file_names = glob.glob(os.path.join(options.dir_bam, '*.bam'))
             const_data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
-            all_data = get_counts_from_multiple_bam(file_names, exon_t_gene, all_exons)
+            #all_data = get_counts_from_multiple_bam(file_names, exon_t_gene, all_exons)
         else:
             assert options.fn_bam != '-'
             file_names = [options.fn_bam]
             const_data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
-            all_data = get_counts_from_multiple_bam(file_names, exon_t_gene, all_exons)
+            #all_data = get_counts_from_multiple_bam(file_names, exon_t_gene, all_exons)
         f = open("./" + gn_version + "/const_count_data.pkl", "wb")
         pickle.dump(const_data, f)
         f.close()
-        f = open("./" + gn_version + "/all_count_data.pkl", "wb")
-        pickle.dump(all_data, f)
-        f.close()
+        #f = open("./" + gn_version + "/all_count_data.pkl", "wb")
+        #pickle.dump(all_data, f)
+        #f.close()
         f = open("./" + gn_version + "/file_names.pkl", "wb")
         pickle.dump(file_names, f)
         f.close()
