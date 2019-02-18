@@ -35,6 +35,9 @@ REG_CHR = 1
 REG_STR = 2
 REG_LEN = 3
 
+DEG = ['TCGA-G9-6498-01A-12R-A311-07', 'TCGA-EJ-A46F-01A-31R-A250-07', 'TCGA-KK-A59V-01A-11R-A29R-07', 'TCGA-G9-6362-01A-11R-1789-07', 'TCGA-J4-A67O-01A-11R-A30B-07']
+NON_DEG = ['TCGA-EJ-7789-01A-11R-2118-07', 'TCGA-J4-AATZ-01A-11R-A41O-07', 'TCGA-EJ-7781-01A-11R-2118-07', 'TCGA-EJ-5511-01A-01R-1580-07', 'TCGA-EJ-7321-11A-01R-2263-07']
+
 
 def prepare_outlier_filter(counts, regions):
     all_counts = []
@@ -44,7 +47,7 @@ def prepare_outlier_filter(counts, regions):
         val = counts[gene[REG_ID]]
         for ex in val:
             all_counts.append(ex[CNT_CNT])
-    return np.percentile(all_counts, q=99.9)
+    return np.percentile(all_counts, q=99.5)
 
 
 def avg_count_per_exon(counts, regions, file_name, cut_off, histo, gn_version):
@@ -103,6 +106,7 @@ def avg_count_per_exon(counts, regions, file_name, cut_off, histo, gn_version):
                 for i in range(rel_pos_start, rel_pos_end+1, 1):
                     bases[i] = ex[CNT_CNT]
             else:
+                # we need this distinction for the graph - otherwise we have "zick-zack" pattern (--> we need to go from lower to higher positions)
                 if gene[REG_STR] == "-":
                     xs.insert(0, rel_pos_end)
                     ys.insert(0, ex[CNT_CNT])
@@ -126,19 +130,20 @@ def avg_count_per_exon(counts, regions, file_name, cut_off, histo, gn_version):
     if histo:
 
         for key in coords:
-            p1 = plt.bar((10 * key), len(filter(lambda ex_l: (ex_l > 0.5), coords[key])), width=2.5, color='royalblue', align='edge')
-            p2 = plt.bar((10 * key) + 2.5, len(filter(lambda ex_l: (ex_l > 1), coords[key])), width=2.5, color='firebrick', align='edge')
-            p3 = plt.bar((10 * key) + 5, len(filter(lambda ex_l: (ex_l > 2), coords[key])), width=2.5, color='orange', align='edge')
-            p4 = plt.bar((10 * key) + 7.5, len(filter(lambda ex_l: (ex_l > 4), coords[key])), width=2.5, color='olivedrab', align='edge')
+            p1 = plt.bar((100 * key), len(filter(lambda ex_l: (ex_l > 0.5), coords[key])), width=25, color='royalblue', align='edge')
+            p2 = plt.bar((100 * key) + 25, len(filter(lambda ex_l: (ex_l > 1), coords[key])), width=25, color='firebrick', align='edge')
+            p3 = plt.bar((100 * key) + 50, len(filter(lambda ex_l: (ex_l > 2), coords[key])), width=25, color='orange', align='edge')
+            p4 = plt.bar((100 * key) + 75, len(filter(lambda ex_l: (ex_l > 4), coords[key])), width=25, color='olivedrab', align='edge')
 
-        plt.xlim(0, 100)
-        plt.ylim(0, 380)
+        plt.xlim(0, 1000)
+        plt.ylim(0, 380)  # FFPE_VS_FF
+        # plt.ylim(0, 550)
         plt.legend([p1, p2, p3, p4], ["> 0.5", "> 1", "> 2", "> 4"])
         plt.title("Constitutive Exons - all lengths (%s)" % file_name)
         plt.ylabel("Number of exons longer than threshold")
         plt.xlabel("Relative Location (10 areas)")
 
-        plt.savefig("../2018_degradationPaper/Coverage_hg38/histo_constExons_allLengths_%s" % file_name)
+        plt.savefig("../2018_degradationPaper/ReadCoverage/" + gn_version + "/histo_median_constExons_allLengths_%s" % file_name)
         plt.show()
 
     else:
@@ -148,7 +153,7 @@ def avg_count_per_exon(counts, regions, file_name, cut_off, histo, gn_version):
         plt.ylabel("Normalized Count")
         plt.xlabel("Relative Location")
 
-        plt.savefig("../2018_degradationPaper/Coverage_hg38/constExons_allLengths_%s" % file_name)
+        plt.savefig("../2018_degradationPaper/ReadCoverage/" + gn_version + "/constExons_allLengths_%s" % file_name)
         plt.show()
 
 
@@ -244,19 +249,20 @@ def distr_over_gene_lengths(counts, regions, file_name, cut_off, histo, gn_versi
         if histo:
 
             for key in coords:
-                p1 = plt.bar((10 * key), len(filter(lambda ex_l: (ex_l > 0.5), coords[key])), width=2.5, color='royalblue', align='edge')
-                p2 = plt.bar((10 * key) + 2.5, len(filter(lambda ex_l: (ex_l > 1), coords[key])), width=2.5, color='firebrick', align='edge')
-                p3 = plt.bar((10 * key) + 5, len(filter(lambda ex_l: (ex_l > 2), coords[key])), width=2.5, color='orange', align='edge')
-                p4 = plt.bar((10 * key) + 7.5, len(filter(lambda ex_l: (ex_l > 4), coords[key])), width=2.5, color='olivedrab', align='edge')
+                p1 = plt.bar((100 * key), len(filter(lambda ex_l: (ex_l > 0.5), coords[key])), width=25, color='royalblue', align='edge')
+                p2 = plt.bar((100 * key) + 25, len(filter(lambda ex_l: (ex_l > 1), coords[key])), width=25, color='firebrick', align='edge')
+                p3 = plt.bar((100 * key) + 50, len(filter(lambda ex_l: (ex_l > 2), coords[key])), width=25, color='orange', align='edge')
+                p4 = plt.bar((100 * key) + 75, len(filter(lambda ex_l: (ex_l > 4), coords[key])), width=25, color='olivedrab', align='edge')
 
-            plt.xlim(0, 100)
+            plt.xlim(0, 1000)
             plt.ylim(0, 130)
+            # plt.ylim(0, 170)
             plt.legend([p1, p2, p3, p4], ["> 0.5", "> 1", "> 2", "> 4"])
             plt.title("Constitutive Exons - bin %i (%s)" % (b + 1, file_name))
             plt.ylabel("Number of exons longer than threshold")
             plt.xlabel("Relative Location (10 areas)")
 
-            plt.savefig("../2018_degradationPaper/Coverage_hg38/histo_constitutive_%s_bin%i" % (file_name, b + 1))
+            plt.savefig("../2018_degradationPaper/ReadCoverage/" + gn_version + "/histo_median_constitutive_%s_bin%i" % (file_name, b + 1))
             plt.show()
 
         else:
@@ -266,7 +272,7 @@ def distr_over_gene_lengths(counts, regions, file_name, cut_off, histo, gn_versi
             plt.ylabel("Normalized Count")
             plt.xlabel("Relative Location")
 
-            plt.savefig("../2018_degradationPaper/Coverage_hg38/constitutive_%s_bin%i" % (file_name, b + 1))
+            plt.savefig("../2018_degradationPaper/ReadCoverage/" + gn_version + "/constitutive_%s_bin%i" % (file_name, b + 1))
             plt.show()
 
 
@@ -281,12 +287,12 @@ def last_const_exon_length(counts, regions, file_name, gn_version):
             continue  # none of the exons is longer than 0
 
         if gene[REG_STR] == "-":
-            end_counts.append(min(val[-1][CNT_LEN], 1000))
+            end_counts.append(min(val[0][CNT_LEN], 2000))
         else:
-            end_counts.append(min(val[0][CNT_LEN], 1000))
-    n, bins, patches = plt.hist(end_counts, bins=50, color="forestgreen")
+            end_counts.append(min(val[-1][CNT_LEN], 2000))
+    n, bins, patches = plt.hist(end_counts, bins=100, color="slateblue")
     plt.title("Length of last exon (%s)" % file_name)
-    plt.savefig("../2018_degradationPaper/Coverage_hg38/lastExonLength_%s" % file_name)
+    plt.savefig("../2018_degradationPaper/ReadCoverage/" + gn_version + "/lastExonLength_%s" % file_name)
 
     plt.show()
 
@@ -295,6 +301,8 @@ def last_const_exon_length(counts, regions, file_name, gn_version):
 def last_const_exon_pos(counts, regions, file_name, exon_lookup, gn_version):
     # exon_lookup is a dictionary with gene-IDs as key and a list as value that contains for each transcript a string of the form:
     # EX1_START-EX1_END,EX2_START-EX2_END,.....
+    end_pos = []
+    excl_count = 0
     for gene in regions:
         if not gene[REG_ID] in counts:
             continue  # we have no counts for that gene
@@ -306,24 +314,115 @@ def last_const_exon_pos(counts, regions, file_name, exon_lookup, gn_version):
         if len(exon_lookup[gene[REG_ID]]) == 1:
             trcpt = exon_lookup[gene[REG_ID]][0].split(",")
             trcpt = np.asarray([x.split("-") for x in trcpt]).astype(int)
-            for i in range(len(trcpt)):
-                if val[-1][CNT_ST] == trcpt[i, 0] and val[-1][CNT_END] == trcpt[i, 1]:
-                    print i
             # at this point, "trcpt" is an array of arrays of start- and end-position for each exon in the transcript
-            # TODO: transform to relative positions and determine relative position of last constitutive exon
+            last_ex_ind = 0
+            last_ex = np.zeros(2)
+            for i in range(len(trcpt)):
+                if (gene[REG_STR] == "-" and val[0][CNT_ST] == trcpt[i, 0] and val[0][CNT_END] == trcpt[i, 1]) or \
+                        (gene[REG_STR] == "+" and val[-1][CNT_ST] == trcpt[i, 0] and val[-1][CNT_END] == trcpt[i, 1]):
+                    last_ex_ind = i
+                    break
+
+            if gene[REG_STR] == '-':
+                loop_range = range(len(trcpt)-1, -1, -1)
+                last_end = trcpt[-1][0] - 1
+            else:
+                loop_range = range(0, len(trcpt), 1)
+                last_end = trcpt[0][0] - 1
+
+            take_gene = True
+            for i in loop_range:
+                if trcpt[i, 0] > last_end:
+                    trcpt[i, 1] = trcpt[i, 1] - (trcpt[i, 0] - (last_end + 1))
+                    trcpt[i, 0] = last_end + 1
+                    last_end = trcpt[i, 1]
+                # if exons overlap:
+                else:
+                    print "CAUTION: Exons overlap"
+                    last_end = trcpt[i, 1]
+                if i == last_ex_ind:
+                    last_ex = trcpt[i]
+
+            if not take_gene:
+                continue
+
+            if gene[REG_STR] == '-':
+                start = trcpt[-1, 0]
+                end = trcpt[0, 1]
+                interval = (end - start) / 1000.0
+                rel_pos_start = 1000 - int(np.floor((last_ex[1] - start) / interval))
+                rel_pos_end = 1000 - int(np.ceil((last_ex[0] - start) / interval))
+            else:
+                start = trcpt[0, 0]
+                end = trcpt[-1, 1]
+                interval = (end - start) / 1000.0
+                rel_pos_start = int(np.ceil((last_ex[0] - start) / interval))
+                rel_pos_end = int(np.floor((last_ex[1] - start) / interval))
+
+            end_pos.append(rel_pos_start + (rel_pos_end - rel_pos_start) / 2)
+
         else:
+            last_ex_pos = []
             for line in exon_lookup[gene[REG_ID]]:
                 trcpt = line.split(",")
                 trcpt = np.asarray([x.split("-") for x in trcpt]).astype(int)
-                for i in range(len(trcpt)):
-                    if val[-1][CNT_ST] == trcpt[i, 0] and val[-1][CNT_END] == trcpt[i, 1]:
-                        print i
                 # at this point, "trcpt" is an array of arrays of start- and end-position for each exon in the transcript
-                # TODO: transform to relative positions and determine relative position of last constitutive exon
+                last_ex_ind = 0
+                last_ex = np.zeros(2)
+                for i in range(len(trcpt)):
+                    if (gene[REG_STR] == "-" and val[0][CNT_ST] == trcpt[i, 0] and val[0][CNT_END] == trcpt[i, 1]) or \
+                            (gene[REG_STR] == "+" and val[-1][CNT_ST] == trcpt[i, 0] and val[-1][CNT_END] == trcpt[i, 1]):
+                        last_ex_ind = i
+                        break
 
-        print exon_lookup[gene[REG_ID]]
-        print val[-1]
+                if gene[REG_STR] == '-':
+                    loop_range = range(len(trcpt) - 1, -1, -1)
+                    last_end = trcpt[-1][0] - 1
+                else:
+                    loop_range = range(0, len(trcpt), 1)
+                    last_end = trcpt[0][0] - 1
 
+                take_gene = True
+                for i in loop_range:
+                    if trcpt[i, 0] > last_end:
+                        trcpt[i, 1] = trcpt[i, 1] - (trcpt[i, 0] - (last_end + 1))
+                        trcpt[i, 0] = last_end + 1
+                        last_end = trcpt[i, 1]
+                    # if exons overlap:
+                    else:
+                        print "CAUTION: Exons overlap"
+                        last_end = trcpt[i, 1]
+                    if i == last_ex_ind:
+                        last_ex = trcpt[i]
+
+                if not take_gene:
+                    continue
+
+                if gene[REG_STR] == '-':
+                    start = trcpt[-1, 0]
+                    end = trcpt[0, 1]
+                    interval = (end - start) / 1000.0
+                    rel_pos_start = 1000 - int(np.floor((last_ex[1] - start) / interval))
+                    rel_pos_end = 1000 - int(np.ceil((last_ex[0] - start) / interval))
+                else:
+                    start = trcpt[0, 0]
+                    end = trcpt[-1, 1]
+                    interval = (end - start) / 1000.0
+                    rel_pos_start = int(np.ceil((last_ex[0] - start) / interval))
+                    rel_pos_end = int(np.floor((last_ex[1] - start) / interval))
+
+                last_ex_pos.append(rel_pos_start + (rel_pos_end - rel_pos_start) / 2)
+            if max(last_ex_pos) - min(last_ex_pos) > 200:
+                excl_count += 1
+                continue
+            else:
+                end_pos.append(min(last_ex_pos) + (max(last_ex_pos) - min(last_ex_pos)) / 2)
+    n, bins, patches = plt.hist(end_pos, bins=50, color="forestgreen")
+    print str(len(end_pos)) + " genes excluding " + str(excl_count)
+    plt.title("Position of last exon (%s)" % file_name)
+    plt.savefig("../2018_degradationPaper/ReadCoverage/" + gn_version + "/lastExonPos_%s" % file_name)
+
+    plt.show()
 
 ###############################################################################################
 
@@ -702,7 +801,7 @@ def parse_options(argv):
 
 
 def main():
-    gn_version = "hg38_tcga_prad"
+    gn_version = "hg38_ffpe_vs_ff"
     options = parse_options(sys.argv)
     if os.path.exists("./" + gn_version + "/anno.tmp") \
             and os.path.exists("./" + gn_version + "/const_ex.pkl") \
@@ -755,10 +854,17 @@ def main():
         f.close()
 
     for i in range(len(file_names)):
-        f_name = file_names[i].split("/")[-1].strip(".bam")
+        f_name = file_names[i].split("/")[-1].strip(".bam")  # FOR FFPE_VS_FF
+        # f_name = file_names[i].split("/")[-1].split(".")[0]
+        # if f_name in DEG:
+        #     f_name = "Deg-" + f_name
+        # elif f_name in NON_DEG:
+        #     f_name = "Non-" + f_name
+        # else:
+        #     print "ERROR"
         cut_off = prepare_outlier_filter(const_data[i], exon_t_gene)
-        # avg_count_per_exon(const_data[i], exon_t_gene, f_name, cut_off, histo=False, gn_version)
-        # distr_over_gene_lengths(const_data[i], exon_t_gene, f_name, cut_off, histo=False, gn_version)
+        # avg_count_per_exon(const_data[i], exon_t_gene, f_name, cut_off, False, gn_version)
+        # distr_over_gene_lengths(const_data[i], exon_t_gene, f_name, cut_off, False, gn_version)
         # last_const_exon_length(const_data[i], exon_t_gene, f_name, gn_version)
         last_const_exon_pos(const_data[i], exon_t_gene, f_name, exon_lookup, gn_version)
 
