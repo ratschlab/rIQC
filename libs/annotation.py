@@ -27,21 +27,21 @@ def __filter_non_chr_contigs(exon_t_gene):
     chr_whitelist = [str(x) for x in range(NMB_CHR)]
     chr_whitelist.extend(['chr%i' % i for i in range(NMB_CHR)])
     chr_whitelist.extend(['chrx', 'chry', 'chrm', 'x', 'y', 'm', 'mt'])
-    k_idx = sp.array([x.lower() in chr_whitelist for x in exon_t_gene[:, 2]], dtype='bool')
+    k_idx = sp.array([x.lower() in chr_whitelist for x in exon_t_gene[:, 1]], dtype='bool')
     
     return exon_t_gene[k_idx, :]
 
 
 def __filter_gene_length(exon_t_gene, length):
-    t_25 = spst.scoreatpercentile(exon_t_gene[:, 4].astype('float'), 25)
-    t_75 = spst.scoreatpercentile(exon_t_gene[:, 4].astype('float'), 75)
+    t_25 = spst.scoreatpercentile(exon_t_gene[:, 3].astype('float'), 25)
+    t_75 = spst.scoreatpercentile(exon_t_gene[:, 3].astype('float'), 75)
 
     if length == 'uq':
-        k_idx = sp.where(exon_t_gene[:, 4].astype('float') > t_75)[0]
+        k_idx = sp.where(exon_t_gene[:, 3].astype('float') > t_75)[0]
     elif length == 'mq':
-        k_idx = sp.where((exon_t_gene[:, 4].astype('float') > t_25) & (exon_t_gene[:, 4].astype('float') < t_75))[0]
+        k_idx = sp.where((exon_t_gene[:, 3].astype('float') > t_25) & (exon_t_gene[:, 3].astype('float') < t_75))[0]
     elif length == 'lq':
-        k_idx = sp.where(exon_t_gene[:, 4].astype('float') < t_25)[0]
+        k_idx = sp.where(exon_t_gene[:, 3].astype('float') < t_25)[0]
     else:
         raise Exception('--length should be one of: uq, mq, lq -- currently is: %s' % length)
     
