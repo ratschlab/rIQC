@@ -7,7 +7,7 @@ import os
 import pdb
 import glob
 import fnmatch
-import cPickle
+import pickle
 from optparse import OptionParser, OptionGroup
 import logging
 
@@ -241,7 +241,10 @@ def main():
             else:
                 bam_list = glob.glob(os.path.join(options.dir_bam, '*.bam'))
                 header = bam_list  ### change this TODO
-                data = get_counts_from_multiple_bam(bam_list, exon_t_gene)  ### REMOVE
+                if os.path.exists("./bam_counts.pkl"):
+                    data = pickle.load(open("./bam_counts.pkl", "rb"))
+                else:
+                    data = get_counts_from_multiple_bam(bam_list, exon_t_gene)  ### REMOVE
         elif options.fn_bam != '-':
             header = [options.fn_bam]  ### change this TODO
             if options.sparseBam:
