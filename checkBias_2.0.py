@@ -100,21 +100,62 @@ def parse_options(argv):
     return options
 
 
-def __get_counts_from_marginal_exons(exon_t_gene, data):
-    my_counts = sp.zeros((exon_t_gene.shape[0], data.shape[1], 2))
+def __get_counts_from_margins(exon_t_gene, data):
+    REG_ID = 0
+    REG_CHR = 1
+    REG_STR = 2
+    REG_LEN = 3
+    REG_EXONS = 4
 
-    for i, rec in enumerate(exon_t_gene):
+    DATA_ST = 0
+    DATA_END = 1
+    DATA_LEN = 2
+    DATA_CNT = 3
 
-        i_start = i*2
-        i_end = i*2 + 1
+    my_counts = sp.zeros((exon_t_gene.shape[0], data.shape[0], 2))
 
-        if rec[0].split(':')[-1] == '-' and \
-                int(rec[0].split(':')[1].split('-')[0]) \
-                < int(rec[1].split(':')[1].split('-')[0]):
-            i_start, i_end = i_end, i_start
+    for (f, file) in enumerate(data):
+        for (g, gene) in enumerate(exon_t_gene):
+            if not gene[REG_ID] in data:
+                continue  # we have no counts for that gene
+            val = data[f][gene[REG_ID]]
 
-        my_counts[i, :, 0] = data[i_start, :]
-        my_counts[i, :, 1] = data[i_end, :]
+            last_end = val[0][DATA_ST] - 1  # need this for "cutting together" exons
+
+            for ex in val:
+                if ex[DATA_ST] > last_end:
+                    ex[DATA_END] = ex[DATA_END] - (ex[DATA_ST] - (last_end + 1))
+                    ex[DATA_ST] = last_end + 1
+                    last_end = ex[DATA_END]
+                # if exons overlap:
+                else:
+                    print "CAUTION: Exons overlap"
+                    last_end = ex[DATA_END]
+
+            start = val[0][DATA_ST]
+            end = val[-1][DATA_END]
+            interval = (end - start) / 1000.0
+
+            bases = np.zeros(1001)
+            for ex in val:
+                if ex[DATA_ST] < start:
+                    print "Error: start was not smallest index"
+                if ex[DATA_END] > end:
+                    print "Error: end was not biggest index"
+
+                rel_pos_start = int(np.ceil((ex[DATA_ST] - start) / interval))
+                rel_pos_end = int(np.floor((ex[DATA_END] - start) / interval))
+                if gene[REG_STR] == "-":
+                    rel_pos_start, rel_pos_end = 1000 - rel_pos_end, 1000 - rel_pos_start
+                if rel_pos_start < 0 or rel_pos_start > 1000 or rel_pos_end < 0 or rel_pos_end > 1000:
+                    print "Start-Position in unexpected range " + str(rel_pos_start) + " or End-Position " + str(rel_pos_end)
+                if start > end or rel_pos_start > rel_pos_end:
+                    print "Made a mistake at determining start and end"
+
+                for i in range(rel_pos_start, rel_pos_end + 1, 1):
+                    bases[i] = ex[DATA_CNT]
+            my_counts[g, f, 0] = np.mean(bases[:100])
+            my_counts[g, f, 1] = np.mean(bases[-100:])
 
     return my_counts
 
@@ -208,18 +249,9 @@ def main():
             else:
                 data = get_counts_from_multiple_bam([options.fn_bam], exon_t_gene)  ### REMOVE
 
-
-        ### normalize counts by exon length
-        logging.info("Normalize counts by exon length")
-        if options.qMode == 'raw':
-            exonl = sp.array([int(x.split(':')[1].split('-')[1])
-                             - int(x.split(':')[1].split('-')[0]) + 1 for x in exon_t_gene[:, :2].ravel('C')],
-                             dtype='float') / 1000.
-            data /= sp.tile(exonl[:, sp.newaxis], data.shape[1])
-
         # Get counts from first and last exon
         logging.info("Get counts from marginal exons")
-        my_counts = __get_counts_from_marginal_exons(exon_t_gene, data)
+        my_counts = __get_counts_from_margins(exon_t_gene, data)
 
         if options.saveCounts:
             # MM CAVEAT: Order of exon-positions and counts might be switched (strand! --> see fct to get counts)

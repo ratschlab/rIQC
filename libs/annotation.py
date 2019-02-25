@@ -76,10 +76,10 @@ def get_annotation_table(fn_genes, fn_anno_tmp, fn_anno, proteinCodingFilter, le
             else:
                 raise Exception(
                     "Only annotation files in formats: gff and gtf are supported. File name must end accordingly")
-            #MM anno.tmp is saved without being filtered for "interesting" genes
+            # anno.tmp is saved without being filtered for "interesting" genes
             sp.savetxt(fn_anno_tmp, exon_t_gene, delimiter='\t', fmt='%s')
 
-        #MM Filtering
+        # Filtering
         exon_t_gene = __filter_non_chr_contigs(exon_t_gene)
         if lengthFilter:
             exon_t_gene = __filter_gene_length(exon_t_gene, length)
@@ -135,7 +135,7 @@ def __get_overlap_genes(fn, format):
     data = []
     if format == 'gtf':
         for l in open(fn, 'r'):
-            ## comments
+            # comments
             if l[SEQ_NAME] == '#':
                 continue
             lSpl = l.strip('\n').split('\t')
@@ -145,7 +145,7 @@ def __get_overlap_genes(fn, format):
             data.append([tags['gene_id'], '%s:%s-%s' % (lSpl[SEQ_NAME], lSpl[START], lSpl[END])])
     elif format in ['gff', 'gff3']:
         for l in open(fn, 'r'):
-            ## comments
+            # comments
             if l[SEQ_NAME] == '#':
                 continue
             lSpl = l.strip('\n').split('\t')
@@ -158,10 +158,10 @@ def __get_overlap_genes(fn, format):
             except KeyError:
                 data.append([tags['Parent'], '%s:%s-%s' % (lSpl[SEQ_NAME], lSpl[START], lSpl[END])])
 
-                ### data contains two   o columns: gene_ID, GeneLocus (e.g., chr7:130020290-130027948:+)
+    # data contains two columns: gene_ID, GeneLocus (e.g., chr7:130020290-130027948:+)
     data = sp.array(data)
 
-    ### fix positions
+    # fix positions
     pos = data[:, 1]
     pos = sp.array([x.split(':')[0] + '-' + x.split(':')[1] for x in pos])
     pos = sp.array([x.strip('chr') for x in pos])
@@ -169,7 +169,7 @@ def __get_overlap_genes(fn, format):
     pos[pos[:, 0] == 'X', 0] = '23'
     pos[pos[:, 0] == 'Y', 0] = '24'
 
-    ### filter weird things like mitochondria etc.
+    # filter weird things like mitochondria etc.
     iOK = np.core.defchararray.isdigit(pos[:, 0])
     pos = pos[iOK, :]
     data = data[iOK, :]
@@ -223,7 +223,7 @@ def __reading_anno(fn, overlapgenes, protein_coding_filter, format):
     removes overlapping genes and eventually filters for protein-coding genes on the fly
     """
     data = dict()
-    ### collect transcript information
+    # collect transcript information
     transcripts = dict()
     for l in open(fn, 'r'):
         if l[SEQ_NAME] == '#':
@@ -246,7 +246,7 @@ def __reading_anno(fn, overlapgenes, protein_coding_filter, format):
             except KeyError:
                 transcripts[tags['Parent']] = ['-'.join([l_spl[START], l_spl[END]])]
 
-    #### read transcript annotation
+    # read transcript annotation
     for l in open(fn, 'r'):
         if l[SEQ_NAME] == '#':
             continue
@@ -261,7 +261,6 @@ def __reading_anno(fn, overlapgenes, protein_coding_filter, format):
             gene_type = tags['gene_type']
             if key in overlapgenes:
                 continue
-
             if protein_coding_filter and (gene_type != "protein_coding"):
                 continue
             value = '%s:%s:%s' % (l_spl[SEQ_NAME], ','.join(transcripts[tags['transcript_id']]), l_spl[STRAND])
@@ -309,15 +308,16 @@ def __process_single_transcript_genes(tcrpt, legacy=False):
         return None
 
     # reformat to somewhat convenient reading
-    #format# ID : exon1positions,exon2positions,...,exonNpositions : STRAND
+    # format# ID : exon1positions,exon2positions,...,exonNpositions : STRAND
 
-    firstEx = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[0] + ':' + tcrpt.split(':')[2]
-    lastEx = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[-1] + ':' + tcrpt.split(':')[2]
-    return [firstEx, lastEx, tcrpt.split(':')[0], tcrpt.split(':')[2], __get_transcript_length(tcrpt, legacy)]
+    exons = tcrpt.split(':')[1].split(',')  # as list
+    exons.sort()
+
+    return [tcrpt.split(':')[0], tcrpt.split(':')[2], __get_transcript_length(tcrpt, legacy), ",".join(exons)]
 
 
 def __process_multi_transcript_genes(tcrpts, legacy=False):
-    #MM CAVEAT: We only use transcript isoforms that have at least two exons
+    # CAVEAT: We only use transcript isoforms that have at least two exons
     if sp.sum(np.core.defchararray.find(tcrpts, ',') != -1) != len(tcrpts):
         return None
 
@@ -344,17 +344,12 @@ def __process_multi_transcript_genes(tcrpts, legacy=False):
     iConst = dists == len(tcrpts)
     uqConstEx = myExons[uidx][iConst]
 
-    firstEx = uqConstEx[0]
-    lastEx = uqConstEx[-1]
-
     # get length of all transcripts
     myExStrucL = []
     for i, rec in enumerate(tcrpts):
-        myExStrucL.append(__get_transcript_length_bex(rec, firstEx, lastEx, legacy))
+        myExStrucL.append(__get_transcript_length(rec, legacy))
 
-    firstEx = tcrpts[0].split(':')[0] + ':' + firstEx + ':' + tcrpts[0].split(':')[2]
-    lastEx = tcrpts[0].split(':')[0] + ':' + lastEx + ':' + tcrpts[0].split(':')[2]
-    return [firstEx, lastEx, tcrpts[0].split(':')[0], tcrpts[0].split(':')[2], str(sp.median(myExStrucL))]
+    return [tcrpts[0].split(':')[0], tcrpts[0].split(':')[2], str(sp.median(myExStrucL)), ",".join(uqConstEx)]
 
 
 def __read_annotation_file(fn, protein_coding_filter, file_format, legacy=False):
@@ -377,12 +372,10 @@ def __read_annotation_file(fn, protein_coding_filter, file_format, legacy=False)
         if temp is None:
             continue
         else:
-            temp.extend([gid])
-            new_data.append(temp)
+            new_data.append([gid] + temp)
     new_data = sp.array(new_data)
-    s_idx = sp.argsort(new_data[:, 5])
-    new_data = new_data[s_idx, :]
-    # filter gene with no name
+    s_idx = sp.argsort(new_data[:, 0])
+    new_data = new_data[s_idx, :]  # filter gene with no name
     return sp.array(new_data)
 
 
