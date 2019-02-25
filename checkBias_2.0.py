@@ -112,7 +112,7 @@ def __get_counts_from_margins(exon_t_gene, data):
     DATA_LEN = 2
     DATA_CNT = 3
 
-    my_counts = sp.zeros((exon_t_gene.shape[0], data.shape[0], 2))
+    my_counts = sp.zeros((exon_t_gene.shape[0], len(data), 2))
 
     for (f, file) in enumerate(data):
         for (g, gene) in enumerate(exon_t_gene):
