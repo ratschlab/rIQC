@@ -40,8 +40,8 @@ def get_counts_from_single_bam(fn_bam, regions):
             print '%i rounds to go. ETA %.0f seconds' % (
             regions.shape[0] - i, (time.time() - t0) / i * (regions.shape[0] - i))
 
-        rec = regions[ii][:, 0:4]
-        rec_exons = regions[ii][:, 5].split(",")
+        rec = regions[ii, 0:4]
+        rec_exons = regions[ii, 5].split(",")
         exon_data = np.zeros((len(rec_exons), 4), dtype=float)
 
         chrm = rec[1]
