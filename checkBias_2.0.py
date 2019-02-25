@@ -116,7 +116,7 @@ def __get_counts_from_margins(exon_t_gene, data):
 
     for (f, file) in enumerate(data):
         for (g, gene) in enumerate(exon_t_gene):
-            if not gene[REG_ID] in data:
+            if not gene[REG_ID] in data[f]:
                 continue  # we have no counts for that gene
             val = data[f][gene[REG_ID]]
 
@@ -245,10 +245,10 @@ def main():
                     data = pickle.load(open("./bam_counts.pkl", "rb"))
                 else:
                     data = get_counts_from_multiple_bam(bam_list, exon_t_gene)  ### REMOVE
-        	    f = open("./bam_counts.pkl", "wb")
-        	    pickle.dump(data, f)
-        	    f.close()
-	elif options.fn_bam != '-':
+                f = open("./bam_counts.pkl", "wb")
+                pickle.dump(data, f)
+                f.close()
+        elif options.fn_bam != '-':
             header = [options.fn_bam]  ### change this TODO
             if options.sparseBam:
                 data = get_counts_from_multiple_bam_sparse([options.fn_bam], exon_t_gene)  ### REMOVE
@@ -308,10 +308,7 @@ def main():
             i_ok = ((my_counts[:, i, 1] > 0) | (my_counts[:, i, 0] > 0))
             ratio = sp.percentile((my_counts[i_ok, i, 1] + 1) / (my_counts[i_ok, i, 0] + 1), 50)
         else:
-	    print my_counts.shape
-	    i_ok = ((my_counts[:, i, 1] > 0) & (my_counts[:, i, 0] > 0))
-            print my_counts[i_ok, i, 1]
-	    print my_counts[i_ok, i, 0]
+            i_ok = ((my_counts[:, i, 1] > 0) & (my_counts[:, i, 0] > 0))
             ratio = sp.percentile(my_counts[i_ok, i, 1] / my_counts[i_ok, i, 0], 50)
 
         assert sp.sum(sp.isnan(ratio)) + sp.sum(sp.isinf(ratio)) == 0
