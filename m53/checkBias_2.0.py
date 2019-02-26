@@ -53,6 +53,12 @@ def parse_options(argv):
     opt_gen.add_option('', '--pseudo_count_ON', dest='doPseudo', action="store_true", help='Add Pseudocounts to ratio', default=False)
     opt_gen.add_option('', '--length',          dest='readLength', metavar='STRING', help='Length filter [uq,mq,lq]', default='uq')
 
+    opt_gen.add_option('', '--score_on_bases_ON',    dest='baseScore', action="store_true",
+                       help="Calculate score not from last and first exon but from certain amount of bases at beginning and end that can be set via "
+                            "--base_number (normalized length)", default=False)
+    opt_gen.add_option('', '--base_number',     dest="baseNumber", type='int',
+                       help="Number of bases at beginning/end for calculating score (only relevant if --score_on_bases_ON is set)", default=100)
+
     opt_gen.add_option('', '--log',             dest='fn_log', metavar='FILE', help='Log file', default='out.log')
     opt_gen.add_option('', '--verbose_ON',      dest='isVerbose', action="store_true", help='Set Logger To Verbose', default=False)
     opt_gen.add_option('', '--plot_ON',         dest='doPlot', action="store_true", help='Plot figures', default=False)
@@ -158,6 +164,8 @@ def main():
             options.proteinCodingFilter,
             options.lengthFilter,
             options.readLength,
+            options.baseScore,
+            options.baseNumber,
             options.legacy)
 
         if options.dir_fastq != '-':
