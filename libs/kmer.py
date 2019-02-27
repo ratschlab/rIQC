@@ -50,7 +50,7 @@ def prepare_kmers(regions, fn_genome, k):
     kmers2 = [set() for _ in regions]
     t0 = time.time()
     # MM: creates array of chromosome names in the order they occur in annotation file (same length as kmers)
-    chrms = sp.array([_.strip('chr') for _ in regions[:, 1]])
+    chrms = sp.array([_.strip('chr') for _ in regions[:, 2]])
     # MM: sequence for each chrm in .fasta file
     for chrm, seq in __read_genome(fn_genome):
         print 'processing %s' % chrm
