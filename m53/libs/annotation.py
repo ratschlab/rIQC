@@ -61,7 +61,7 @@ def __name_anno_tmp_file(proteinCodingFilter, legacy):
     return fn_anno_tmp + '.tmp'
 
 
-def get_annotation_table(fn_genes, fn_anno_tmp, fn_anno, proteinCodingFilter, lengthFilter, length, baseScore, bases, legacy):
+def get_annotation_table(fn_genes, fn_anno_tmp, fn_anno, proteinCodingFilter, lengthFilter, length, legacy):
     if fn_genes == '-':
         if fn_anno_tmp == '':
             fn_anno_tmp = __name_anno_tmp_file(proteinCodingFilter, legacy)
@@ -69,16 +69,16 @@ def get_annotation_table(fn_genes, fn_anno_tmp, fn_anno, proteinCodingFilter, le
             exon_t_gene = sp.loadtxt(fn_anno_tmp, delimiter='\t', dtype='string')
         else:
             if fn_anno.lower().endswith('gff') or fn_anno.lower().endswith('gff3'):
-                exon_t_gene = __read_annotation_file(fn_anno, proteinCodingFilter, baseScore, bases, file_format='gff', legacy=legacy)
+                exon_t_gene = __read_annotation_file(fn_anno, proteinCodingFilter, file_format='gff', legacy=legacy)
             elif fn_anno.lower().endswith('gtf'):
-                exon_t_gene = __read_annotation_file(fn_anno, proteinCodingFilter, baseScore, bases, file_format='gtf', legacy=legacy)
+                exon_t_gene = __read_annotation_file(fn_anno, proteinCodingFilter, file_format='gtf', legacy=legacy)
             else:
                 raise Exception(
                     "Only annotation files in formats: gff and gtf are supported. File name must end accordingly")
-            #MM anno.tmp is saved without being filtered for "interesting" genes
+            # anno.tmp is saved without being filtered for "interesting" genes
             sp.savetxt(fn_anno_tmp, exon_t_gene, delimiter='\t', fmt='%s')
 
-        #MM Filtering
+        # Filtering
         exon_t_gene = __filter_non_chr_contigs(exon_t_gene)
         if lengthFilter:
             exon_t_gene = __filter_gene_length(exon_t_gene, length)
@@ -134,7 +134,7 @@ def __get_overlap_genes(fn, format):
     data = []
     if format == 'gtf':
         for l in open(fn, 'r'):
-            ## comments
+            # comments
             if l[SEQ_NAME] == '#':
                 continue
             lSpl = l.strip('\n').split('\t')
@@ -144,7 +144,7 @@ def __get_overlap_genes(fn, format):
             data.append([tags['gene_id'], '%s:%s-%s' % (lSpl[SEQ_NAME], lSpl[START], lSpl[END])])
     elif format in ['gff', 'gff3']:
         for l in open(fn, 'r'):
-            ## comments
+            # comments
             if l[SEQ_NAME] == '#':
                 continue
             lSpl = l.strip('\n').split('\t')
@@ -157,10 +157,10 @@ def __get_overlap_genes(fn, format):
             except KeyError:
                 data.append([tags['Parent'], '%s:%s-%s' % (lSpl[SEQ_NAME], lSpl[START], lSpl[END])])
 
-                ### data contains two   o columns: gene_ID, GeneLocus (e.g., chr7:130020290-130027948:+)
+    # data contains two columns: gene_ID, GeneLocus (e.g., chr7:130020290-130027948:+)
     data = sp.array(data)
 
-    ### fix positions
+    # fix positions
     pos = data[:, 1]
     pos = sp.array([x.split(':')[0] + '-' + x.split(':')[1] for x in pos])
     pos = sp.array([x.strip('chr') for x in pos])
@@ -168,7 +168,7 @@ def __get_overlap_genes(fn, format):
     pos[pos[:, 0] == 'X', 0] = '23'
     pos[pos[:, 0] == 'Y', 0] = '24'
 
-    ### filter weird things like mitochondria etc.
+    # filter weird things like mitochondria etc.
     iOK = np.core.defchararray.isdigit(pos[:, 0])
     pos = pos[iOK, :]
     data = data[iOK, :]
@@ -222,7 +222,7 @@ def __reading_anno(fn, overlapgenes, protein_coding_filter, format):
     removes overlapping genes and eventually filters for protein-coding genes on the fly
     """
     data = dict()
-    ### collect transcript information
+    # collect transcript information
     transcripts = dict()
     for l in open(fn, 'r'):
         if l[SEQ_NAME] == '#':
@@ -245,7 +245,7 @@ def __reading_anno(fn, overlapgenes, protein_coding_filter, format):
             except KeyError:
                 transcripts[tags['Parent']] = ['-'.join([l_spl[START], l_spl[END]])]
 
-    #### read transcript annotation
+    # read transcript annotation
     for l in open(fn, 'r'):
         if l[SEQ_NAME] == '#':
             continue
@@ -260,7 +260,6 @@ def __reading_anno(fn, overlapgenes, protein_coding_filter, format):
             gene_type = tags['gene_type']
             if key in overlapgenes:
                 continue
-
             if protein_coding_filter and (gene_type != "protein_coding"):
                 continue
             value = '%s:%s:%s' % (l_spl[SEQ_NAME], ','.join(transcripts[tags['transcript_id']]), l_spl[STRAND])
@@ -299,7 +298,7 @@ def __reading_anno(fn, overlapgenes, protein_coding_filter, format):
     return data
 
 
-def __process_single_transcript_genes(tcrpt, base_score, bases, legacy=False):
+def __process_single_transcript_genes(tcrpt, legacy=False):
     assert len(tcrpt) == 1, "Too many transcripts to process"
 
     # checking that we have at least two exons
@@ -309,18 +308,14 @@ def __process_single_transcript_genes(tcrpt, base_score, bases, legacy=False):
 
     #format# ID : exon1positions,exon2positions,...,exonNpositions : STRAND
 
-    if base_score:
-        print "Todo"
-        # TODO
-    else:
-        firstEx = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[0] + ':' + tcrpt.split(':')[2]
-        lastEx = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[-1] + ':' + tcrpt.split(':')[2]
+    firstEx = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[0] + ':' + tcrpt.split(':')[2]
+    lastEx = tcrpt.split(':')[0] + ':' + tcrpt.split(':')[1].split(',')[-1] + ':' + tcrpt.split(':')[2]
 
     return [firstEx, lastEx, tcrpt.split(':')[0], tcrpt.split(':')[2], __get_transcript_length(tcrpt, legacy)]
 
 
-def __process_multi_transcript_genes(tcrpts, base_score, bases, legacy=False):
-    #MM CAVEAT: We only use transcript isoforms that have at least two exons
+def __process_multi_transcript_genes(tcrpts, legacy=False):
+    # CAVEAT: We only use transcript isoforms that have at least two exons
     if sp.sum(np.core.defchararray.find(tcrpts, ',') != -1) != len(tcrpts):
         return None
 
@@ -355,17 +350,13 @@ def __process_multi_transcript_genes(tcrpts, base_score, bases, legacy=False):
     for i, rec in enumerate(tcrpts):
         myExStrucL.append(__get_transcript_length_bex(rec, firstEx, lastEx, legacy))
 
-    if base_score:
-        print "Todo"
-        # TODO
-    else:
-        firstEx = tcrpts[0].split(':')[0] + ':' + firstEx + ':' + tcrpts[0].split(':')[2]
-        lastEx = tcrpts[0].split(':')[0] + ':' + lastEx + ':' + tcrpts[0].split(':')[2]
+    firstEx = tcrpts[0].split(':')[0] + ':' + firstEx + ':' + tcrpts[0].split(':')[2]
+    lastEx = tcrpts[0].split(':')[0] + ':' + lastEx + ':' + tcrpts[0].split(':')[2]
 
     return [firstEx, lastEx, tcrpts[0].split(':')[0], tcrpts[0].split(':')[2], str(sp.median(myExStrucL))]
 
 
-def __read_annotation_file(fn, protein_coding_filter, base_score, bases, file_format, legacy=False):
+def __read_annotation_file(fn, protein_coding_filter, file_format, legacy=False):
     # get list of overlapping genes
     overlapgenes = __get_overlap_genes(fn, file_format)
 
@@ -377,9 +368,9 @@ def __read_annotation_file(fn, protein_coding_filter, base_score, bases, file_fo
     for gid in uq_g_id:
         # process transcripts
         if len(data[gid]) == 1:
-            temp = __process_single_transcript_genes(data[gid], base_score, bases, legacy)
+            temp = __process_single_transcript_genes(data[gid], legacy)
         else:
-            temp = __process_multi_transcript_genes(data[gid], base_score, bases, legacy)
+            temp = __process_multi_transcript_genes(data[gid], legacy)
 
         # make sure it has been processed correctly
         if temp is None:

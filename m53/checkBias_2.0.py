@@ -7,7 +7,7 @@ import os
 import pdb
 import glob
 import fnmatch
-import cPickle
+import pickle
 from optparse import OptionParser, OptionGroup
 import logging
 
@@ -164,8 +164,6 @@ def main():
             options.proteinCodingFilter,
             options.lengthFilter,
             options.readLength,
-            options.baseScore,
-            options.baseNumber,
             options.legacy)
 
         if options.dir_fastq != '-':
