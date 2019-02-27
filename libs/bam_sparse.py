@@ -19,7 +19,7 @@ def get_counts_from_single_bam_sparse(fn_bam, regions):
         dummy = sp.zeros(regions.shape[0] * 2)
         dummy[:] = sp.nan
         return dummy
-
+        
     if fn_bam.lower().endswith('npz'):
         IN = sp.load(fn_bam)
     else:

@@ -291,8 +291,8 @@ def distr_over_gene_lengths(counts, regions, file_name, cut_off, histo, gn_versi
             plt.show()
 
 
-# Distribution of length of last-constitutive exons
-def last_const_exon_absolute_length(counts, regions, file_name, cut_off):
+# Distribution of length of last-constitutive exons (joint and in different length bins)
+def last_const_exon_length(counts, regions, file_name, cut_off, gn_version):
     end_counts = []
     for gene in regions:
         if not gene[REG_ID] in counts:
@@ -315,111 +315,6 @@ def last_const_exon_absolute_length(counts, regions, file_name, cut_off):
         else:
             end_counts.append(min(val[-1][CNT_LEN], 2000))
     n, bins, patches = plt.hist(end_counts, bins=100, color="slateblue")
-    plt.title("Length of last exon (%s)" % file_name)
-
-    plt.show()
-
-
-def first_const_exon_length(counts, regions, file_name, cut_off, gn_version):
-    start_counts = []
-    for gene in regions:
-        if not gene[REG_ID] in counts:
-            continue  # we have no counts for that gene
-        val = counts[gene[REG_ID]]
-        if not np.sum(val[:, CNT_CNT] > 0.000):
-            continue  # none of the exons is longer than 0
-
-        last_end = val[0][CNT_ST] - 1  # need this for "cutting together" exons
-
-        take_gene = True
-        for ex in val:
-            if ex[CNT_CNT] > cut_off:
-                take_gene = False
-                break
-            if ex[CNT_ST] > last_end:
-                ex[CNT_END] = ex[CNT_END] - (ex[CNT_ST] - (last_end + 1))
-                ex[CNT_ST] = last_end + 1
-                last_end = ex[CNT_END]
-            # if exons overlap:
-            else:
-                print "CAUTION: Exons overlap"
-                last_end = ex[CNT_END]
-
-        if not take_gene:
-            continue
-
-        start = val[0][CNT_ST]
-        end = val[-1][CNT_END]
-        interval = (end - start) / 1000.0
-
-        for ex in val:
-            if ex[CNT_ST] < start:
-                print "Error: start was not smallest index"
-            if ex[CNT_END] > end:
-                print "Error: end was not biggest index"
-
-        if gene[REG_STR] == "-":
-            rel_pos_start = 1000 - int(np.floor((val[-1][CNT_END] - start) / interval))
-            rel_pos_end = 1000 - int(np.ceil((val[-1][CNT_ST] - start) / interval))
-        else:
-            rel_pos_start = int(np.ceil((val[-1][CNT_ST] - start) / interval))
-            rel_pos_end = int(np.floor((val[-1][CNT_END] - start) / interval))
-        start_counts.append(rel_pos_end - rel_pos_start)
-
-    n, bins, patches = plt.hist(start_counts, bins=25, color="lightcoral")
-    plt.title("Length of first exon (%s)" % file_name)
-    plt.savefig("../2018_degradationPaper/ReadCoverage/" + gn_version + "/firstExonLength_%s" % file_name)
-
-    plt.show()
-
-
-def last_const_exon_length(counts, regions, file_name, cut_off, gn_version):
-    end_counts = []
-    for gene in regions:
-        if not gene[REG_ID] in counts:
-            continue  # we have no counts for that gene
-        val = counts[gene[REG_ID]]
-        if not np.sum(val[:, CNT_CNT] > 0.000):
-            continue  # none of the exons is longer than 0
-
-        last_end = val[0][CNT_ST] - 1  # need this for "cutting together" exons
-
-        take_gene = True
-        for ex in val:
-            if ex[CNT_CNT] > cut_off:
-                take_gene = False
-                break
-            if ex[CNT_ST] > last_end:
-                ex[CNT_END] = ex[CNT_END] - (ex[CNT_ST] - (last_end + 1))
-                ex[CNT_ST] = last_end + 1
-                last_end = ex[CNT_END]
-            # if exons overlap:
-            else:
-                print "CAUTION: Exons overlap"
-                last_end = ex[CNT_END]
-
-        if not take_gene:
-            continue
-
-        start = val[0][CNT_ST]
-        end = val[-1][CNT_END]
-        interval = (end - start) / 1000.0
-
-        for ex in val:
-            if ex[CNT_ST] < start:
-                print "Error: start was not smallest index"
-            if ex[CNT_END] > end:
-                print "Error: end was not biggest index"
-
-        if gene[REG_STR] == "-":
-            rel_pos_start = 1000 - int(np.floor((val[0][CNT_END] - start) / interval))
-            rel_pos_end = 1000 - int(np.ceil((val[0][CNT_ST] - start) / interval))
-        else:
-            rel_pos_start = int(np.ceil((val[-1][CNT_ST] - start) / interval))
-            rel_pos_end = int(np.floor((val[-1][CNT_END] - start) / interval))
-        end_counts.append(rel_pos_end - rel_pos_start)
-
-    n, bins, patches = plt.hist(end_counts, bins=25, color="slateblue")
     plt.title("Length of last exon (%s)" % file_name)
     plt.savefig("../2018_degradationPaper/ReadCoverage/" + gn_version + "/lastExonLength_%s" % file_name)
 
@@ -1117,8 +1012,7 @@ def main():
         cut_off = prepare_outlier_filter(const_data[i], exon_t_gene)
         # avg_count_per_exon(const_data[i], exon_t_gene, f_name, cut_off, True, gn_version)
         # distr_over_gene_lengths(const_data[i], exon_t_gene, f_name, cut_off, True, gn_version)
-        first_const_exon_length(const_data[i], exon_t_gene, f_name, cut_off, gn_version)
-        # last_const_exon_length(const_data[i], exon_t_gene, f_name, cut_off, gn_version)
+        last_const_exon_length(const_data[i], exon_t_gene, f_name, cut_off, gn_version)
         # last_const_exon_pos(const_data[i], exon_t_gene, f_name, cut_off, exon_lookup, gn_version)
 
 

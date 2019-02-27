@@ -14,6 +14,7 @@ NMB_CHR = 23
 SEQ_NAME = 0    # name of chromosome or scaffold
 SOURCE = 1      # name of program that generated this feature
 FEATURE = 2     # feature type name (e.g. "gene", "transcript", "exon")
+                # type of feature (term or accession from SOFA sequence ontology)
 START = 3       # start position of feature (seq numbering starting at 1)
 END = 4         # end position of feature (seq numbering starting at 1)
 SCORE = 5       # a floating point value
@@ -306,7 +307,8 @@ def __process_single_transcript_genes(tcrpt, legacy=False):
     if tcrpt.find(',') == -1:
         return None
 
-    #format# ID : exon1positions,exon2positions,...,exonNpositions : STRAND
+    # reformat to somewhat convenient reading
+    # format# ID : exon1positions,exon2positions,...,exonNpositions : STRAND
 
     exons = tcrpt.split(':')[1].split(',')  # as list
     exons.sort()
