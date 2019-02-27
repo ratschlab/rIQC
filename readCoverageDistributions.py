@@ -321,15 +321,15 @@ def last_const_exon_absolute_length(counts, regions, file_name, cut_off):
 
 
 def first_const_exon_length(counts, regions, file_name, cut_off, gn_version):
-    start_counts = []
+    first_ex_lengths = []
     for gene in regions:
         if not gene[REG_ID] in counts:
             continue  # we have no counts for that gene
-        val = counts[gene[REG_ID]]
+        val = counts[gene[REG_ID]]  # ndarray with all consitutive exons (start,end,length,count)
         if not np.sum(val[:, CNT_CNT] > 0.000):
             continue  # none of the exons is longer than 0
 
-        last_end = val[0][CNT_ST] - 1  # need this for "cutting together" exons
+        last_end = val[0, CNT_ST] - 1  # need this for "cutting together" exons
 
         take_gene = True
         for ex in val:
@@ -350,6 +350,7 @@ def first_const_exon_length(counts, regions, file_name, cut_off, gn_version):
 
         start = val[0][CNT_ST]
         end = val[-1][CNT_END]
+        assert end > start  # or otherwise our assumptions (that exons are sorted in ascending order) are wrong
         interval = (end - start) / 1000.0
 
         for ex in val:
@@ -362,11 +363,11 @@ def first_const_exon_length(counts, regions, file_name, cut_off, gn_version):
             rel_pos_start = 1000 - int(np.floor((val[-1][CNT_END] - start) / interval))
             rel_pos_end = 1000 - int(np.ceil((val[-1][CNT_ST] - start) / interval))
         else:
-            rel_pos_start = int(np.ceil((val[-1][CNT_ST] - start) / interval))
-            rel_pos_end = int(np.floor((val[-1][CNT_END] - start) / interval))
-        start_counts.append(rel_pos_end - rel_pos_start)
+            rel_pos_start = int(np.ceil((val[0][CNT_ST] - start) / interval))
+            rel_pos_end = int(np.floor((val[0][CNT_END] - start) / interval))
+        first_ex_lengths.append(rel_pos_end - rel_pos_start)
 
-    n, bins, patches = plt.hist(start_counts, bins=25, color="lightcoral")
+    n, bins, patches = plt.hist(first_ex_lengths, bins=25, color="lightcoral")
     plt.title("Length of first exon (%s)" % file_name)
     plt.savefig("../2018_degradationPaper/ReadCoverage/" + gn_version + "/firstExonLength_%s" % file_name)
 
@@ -374,7 +375,7 @@ def first_const_exon_length(counts, regions, file_name, cut_off, gn_version):
 
 
 def last_const_exon_length(counts, regions, file_name, cut_off, gn_version):
-    end_counts = []
+    last_ex_lengths = []
     for gene in regions:
         if not gene[REG_ID] in counts:
             continue  # we have no counts for that gene
@@ -403,6 +404,7 @@ def last_const_exon_length(counts, regions, file_name, cut_off, gn_version):
 
         start = val[0][CNT_ST]
         end = val[-1][CNT_END]
+        assert end > start
         interval = (end - start) / 1000.0
 
         for ex in val:
@@ -417,9 +419,9 @@ def last_const_exon_length(counts, regions, file_name, cut_off, gn_version):
         else:
             rel_pos_start = int(np.ceil((val[-1][CNT_ST] - start) / interval))
             rel_pos_end = int(np.floor((val[-1][CNT_END] - start) / interval))
-        end_counts.append(rel_pos_end - rel_pos_start)
+        last_ex_lengths.append(rel_pos_end - rel_pos_start)
 
-    n, bins, patches = plt.hist(end_counts, bins=25, color="slateblue")
+    n, bins, patches = plt.hist(last_ex_lengths, bins=25, color="slateblue")
     plt.title("Length of last exon (%s)" % file_name)
     plt.savefig("../2018_degradationPaper/ReadCoverage/" + gn_version + "/lastExonLength_%s" % file_name)
 
@@ -1053,15 +1055,14 @@ def parse_options(argv):
 
 
 def main():
-    gn_version = "hg38_tcga_prad"
+    gn_version = "hg38_ffpe_vs_ff"
     options = parse_options(sys.argv)
+
     if os.path.exists("./" + gn_version + "/anno.tmp") \
             and os.path.exists("./" + gn_version + "/const_ex.pkl") \
             and os.path.exists("./" + gn_version + "/exon_lookup.pkl"):
-            # and os.path.exists("./" + gn_version + "/all_ex.pkl") \
         exon_t_gene = sp.loadtxt("./" + gn_version + "/anno.tmp", delimiter='\t', dtype='string')
         const_exons = pickle.load(open("./" + gn_version + "/const_ex.pkl", "rb"))
-        # #all_exons = pickle.load(open("./" + gn_version + "/all_ex.pkl", "rb"))
         exon_lookup = pickle.load(open("./" + gn_version + "/exon_lookup.pkl", "rb"))
     else:
         exon_t_gene, const_exons, all_exons, exon_lookup = get_annotation_table(options.fn_anno, options.proteinCodingFilter)
@@ -1069,55 +1070,45 @@ def main():
         f = open("./" + gn_version + "/const_ex.pkl", "wb")
         pickle.dump(const_exons, f)
         f.close()
-        f = open("./" + gn_version + "/all_ex.pkl", "wb")
-        pickle.dump(all_exons, f)
-        f.close()
         f = open("./" + gn_version + "/exon_lookup.pkl", "wb")
         pickle.dump(exon_lookup, f)
         f.close()
 
     if os.path.exists("./" + gn_version + "/const_count_data.pkl") \
             and os.path.exists("./" + gn_version + "/file_names.pkl"):
-            # and os.path.exists("./" + gn_version + "/all_count_data.pkl"):
-        # file_names = ['FFPE_1', 'FFPE_2', 'FFPE_3', 'FFPE_4', 'FF_1', 'FF_2', 'FF_3', 'FF_4']
         file_names = pickle.load(open("./" + gn_version + "/file_names.pkl", "rb"))
         const_data = pickle.load(open("./" + gn_version + "/const_count_data.pkl", "rb"))
-        # #all_data = pickle.load(open("./" + gn_version + "/all_count_data.pkl", "rb"))
         # data is a dictionary with unique gene_IDs as keys and
         # a list of (constitutive) exons (start, end, (normalized) count) as value
     else:
         if options.dir_bam != '-':
             file_names = glob.glob(os.path.join(options.dir_bam, '*.bam'))
             const_data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
-            # #all_data = get_counts_from_multiple_bam(file_names, exon_t_gene, all_exons)
         else:
             assert options.fn_bam != '-'
             file_names = [options.fn_bam]
             const_data = get_counts_from_multiple_bam(file_names, exon_t_gene, const_exons)
-            # #all_data = get_counts_from_multiple_bam(file_names, exon_t_gene, all_exons)
         f = open("./" + gn_version + "/const_count_data.pkl", "wb")
         pickle.dump(const_data, f)
         f.close()
-        # #f = open("./" + gn_version + "/all_count_data.pkl", "wb")
-        # #pickle.dump(all_data, f)
-        # #f.close()
         f = open("./" + gn_version + "/file_names.pkl", "wb")
         pickle.dump(file_names, f)
         f.close()
 
     for i in range(len(file_names)):
-        # f_name = file_names[i].split("/")[-1].strip(".bam")  # FOR FFPE_VS_FF
-        f_name = file_names[i].split("/")[-1].split(".")[0]
-        if f_name in DEG:
-            f_name = "Deg-" + f_name
-        elif f_name in NON_DEG:
-            f_name = "Non-" + f_name
-        else:
-            print "ERROR"
+        f_name = file_names[i].split("/")[-1].strip(".bam")  # FOR FFPE_VS_FF
+        # f_name = file_names[i].split("/")[-1].split(".")[0]
+        # if f_name in DEG:
+        #     f_name = "Deg-" + f_name
+        # elif f_name in NON_DEG:
+        #     f_name = "Non-" + f_name
+        # else:
+        #     print "ERROR"
         cut_off = prepare_outlier_filter(const_data[i], exon_t_gene)
+
         # avg_count_per_exon(const_data[i], exon_t_gene, f_name, cut_off, True, gn_version)
         # distr_over_gene_lengths(const_data[i], exon_t_gene, f_name, cut_off, True, gn_version)
-        first_const_exon_length(const_data[i], exon_t_gene, f_name, cut_off, gn_version)
+        # first_const_exon_length(const_data[i], exon_t_gene, f_name, cut_off, gn_version)
         # last_const_exon_length(const_data[i], exon_t_gene, f_name, cut_off, gn_version)
         # last_const_exon_pos(const_data[i], exon_t_gene, f_name, cut_off, exon_lookup, gn_version)
 

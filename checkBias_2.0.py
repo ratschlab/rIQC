@@ -62,6 +62,9 @@ def parse_options(argv):
     opt_gen.add_option('', '--protein_coding_filter_OFF', dest="proteinCodingFilter", action="store_false", help="Consider only genes that are protein-coding", default=True)
     opt_gen.add_option('', '--length_filter_OFF',         dest="lengthFilter", action="store_false", help="Only consider genes of certain length", default=True)
 
+    opt_gen.add_option('', '--base_number', dest="baseNumber", type='int',
+                       help="Number of bases at beginning/end for calculating score ", default=100)
+
     opt_gen.add_option('', '--save_counts_ON',  dest='saveCounts', action='store_true', help='Store the exon counts in .npy and .tsv files for later use', default=False)
     opt_gen.add_option('', '--scale_counts_ON', dest='scaleCounts', action='store_true', help='Scale counts with pre-computed scaling factors for degradation compensation', default=False)
 
@@ -100,7 +103,7 @@ def parse_options(argv):
     return options
 
 
-def __get_counts_from_margins(exon_t_gene, data):
+def __get_counts_from_margins(exon_t_gene, data, base_number):
     REG_ID = 0
     REG_CHR = 1
     REG_STR = 2
@@ -154,8 +157,8 @@ def __get_counts_from_margins(exon_t_gene, data):
 
                 for i in range(rel_pos_start, rel_pos_end + 1, 1):
                     bases[i] = ex[DATA_CNT]
-            my_counts[g, f, 0] = np.mean(bases[:100])
-            my_counts[g, f, 1] = np.mean(bases[-100:])
+            my_counts[g, f, 0] = np.mean(bases[:base_number])
+            my_counts[g, f, 1] = np.mean(bases[-base_number:])
 
     return my_counts
 
@@ -257,7 +260,7 @@ def main():
 
         # Get counts from first and last exon
         logging.info("Get counts from marginal exons")
-        my_counts = __get_counts_from_margins(exon_t_gene, data)
+        my_counts = __get_counts_from_margins(exon_t_gene, data, options.baseNumber)
 
         if options.saveCounts:
             # MM CAVEAT: Order of exon-positions and counts might be switched (strand! --> see fct to get counts)
