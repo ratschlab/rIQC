@@ -48,7 +48,7 @@ def __filter_gene_length(exon_t_gene, length):
 
 
 def __name_anno_tmp_file(proteinCodingFilter, legacy):
-    fn_anno_tmp = 'anno'
+    fn_anno_tmp = 'anno_tmp'
 
     if proteinCodingFilter:
         fn_anno_tmp = fn_anno_tmp + '_pcfON'
@@ -58,7 +58,7 @@ def __name_anno_tmp_file(proteinCodingFilter, legacy):
     if legacy:
         fn_anno_tmp = fn_anno_tmp + '_legacy'
 
-    return fn_anno_tmp + '.tmp'
+    return fn_anno_tmp + '.tsv'
 
 
 def get_annotation_table(fn_genes, fn_anno_tmp, fn_anno, proteinCodingFilter, lengthFilter, length, legacy):
@@ -75,7 +75,7 @@ def get_annotation_table(fn_genes, fn_anno_tmp, fn_anno, proteinCodingFilter, le
             else:
                 raise Exception(
                     "Only annotation files in formats: gff and gtf are supported. File name must end accordingly")
-            # anno.tmp is saved without being filtered for "interesting" genes
+            # the temporary anno_*.tsv is saved without being filtered for "interesting" genes
             sp.savetxt(fn_anno_tmp, exon_t_gene, delimiter='\t', fmt='%s')
 
         # Filtering
