@@ -74,8 +74,6 @@ def parse_options(argv):
     opt_gen.add_option('', '--scale_mode', dest='scaleMode', metavar='STRING', help='How to scale counts [first, last, pseudoFirst]', default='first')
 
     opt_gen.add_option('', '--legacy', dest='legacy', action="store_true", help='Switch on some legacy behavior', default=False)
-
-    opt_gen.add_option('', '--plot',   dest='doPlot', action="store_true", help='Plot figures', default=False)
     
     opt_kmer = OptionGroup(parser, 'Options for k-mer counting')
 
