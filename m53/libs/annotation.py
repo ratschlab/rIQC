@@ -1,5 +1,4 @@
 import pysam
-import pdb
 import scipy as sp
 import scipy.stats as spst
 import numpy as np

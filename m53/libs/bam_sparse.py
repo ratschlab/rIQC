@@ -5,7 +5,6 @@ import scipy.sparse as spst
 import sys
 import os
 import warnings
-import pdb
 import h5py
 from sets import Set
 

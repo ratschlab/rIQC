@@ -4,7 +4,6 @@ import numpy as np
 
 import sys
 import os
-import pdb
 import glob
 import fnmatch
 import pickle

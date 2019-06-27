@@ -1,5 +1,4 @@
 import numpy as np
-import pdb
 import scipy as sp
 from optparse import OptionParser, OptionGroup
 import logging

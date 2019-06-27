@@ -1,6 +1,5 @@
 import scipy as sp
 import warnings
-import pdb
 
 
 def filterBid(allids, sbids):
