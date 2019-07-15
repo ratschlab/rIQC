@@ -36,8 +36,8 @@ def get_counts_from_single_bam(fn_bam, regions):
     for i, ii in enumerate(sidx):
         rec = regions[ii]
         if i > 0 and i % 100 == 0:
-            print '%i rounds to go. ETA %.0f seconds' % (
-            regions.shape[0] - i, (time.time() - t0) / i * (regions.shape[0] - i))
+            print('%i rounds to go. ETA %.0f seconds' % (
+            regions.shape[0] - i, (time.time() - t0) / i * (regions.shape[0] - i)))
         if len(regions.shape) == 1:
             chrm = rec.split(':')[0]
             if not chrm in refseqs:
@@ -68,7 +68,7 @@ def get_counts_from_single_bam(fn_bam, regions):
                      samfile.fetch(chrm, start2, end2) if not read.is_secondary]) / 50.0))
             # print '%s\t%s\tcnt1: %i\tcnt2: %i' % (rec[0], rec[1], cnt1, cnt2)
         except ValueError:
-            print >> sys.stderr, 'Ignored %s' % chrm
+            print('Ignored %s' % chrm, file=sys.stderr)
             cnt1 = 1
             cnt2 = 1
         finally:

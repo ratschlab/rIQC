@@ -6,15 +6,15 @@ import sys
 import os
 import glob
 import fnmatch
-import cPickle
+import pickle
 from optparse import OptionParser, OptionGroup
 import logging
 
-from libs.annotation import *
-from libs.viz import *
-from libs.bam import *
-from libs.bam_sparse import *
-from libs.kmer import *
+from .libs.annotation import *
+from .libs.viz import *
+from .libs.bam import *
+from .libs.bam_sparse import *
+from .libs.kmer import *
 
 
 def parse_options(argv):
@@ -70,11 +70,11 @@ def parse_options(argv):
         sys.exit(2)
     if sp.sum(int(options.dir_bam != '-') + int(options.fn_bam != '-')
               + int(options.dir_cnt != '-') + int(options.dir_fastq != '-')) != 1:
-        print "Please specify exactly one type of input file(s) (e.g.: Exon quantification, Bam Files)"
+        print("Please specify exactly one type of input file(s) (e.g.: Exon quantification, Bam Files)")
         parser.print_help()
         sys.exit(2)
     if options.dir_fastq != '-' and options.fn_genome == '-':
-        print >> sys.stderr, 'For usage on fastq files a genome file in fasta needs to be provided via -G/--genome'
+        print('For usage on fastq files a genome file in fasta needs to be provided via -G/--genome', file=sys.stderr)
         sys.exit(2)
     return options
 
@@ -122,9 +122,9 @@ def main():
 
     if options.dir_fastq != '-':
         if options.fn_pickle_filt is not None and os.path.exists(options.fn_pickle_filt):
-            (kmers1, kmers2) = cPickle.load(open(options.fn_pickle_filt, 'r'))
+            (kmers1, kmers2) = pickle.load(open(options.fn_pickle_filt, 'r'))
         elif os.path.exists('filt_kmers_k%i.pickle' % options.k):
-            (kmers1, kmers2) = cPickle.load(open(('filt_kmers_k%i.pickle' % options.k), 'r'))
+            (kmers1, kmers2) = pickle.load(open(('filt_kmers_k%i.pickle' % options.k), 'r'))
         else:
             kmers1, kmers2 = prepare_kmers(
                     exon_t_gene,
@@ -178,7 +178,7 @@ def main():
 
     #MM CAVEAT: Order of exon-positions and counts might be switched (strand! --> see fct to get counts)
     sp.savetxt(options.fn_out + "_header.tsv", header, delimiter="\t", fmt="%s")
-    for i in xrange(my_counts.shape[1]):
+    for i in range(my_counts.shape[1]):
         exon_table = np.column_stack((exon_t_gene[:, :], my_counts[:, i, :]))
         np.save(options.fn_out + '_counts_' + str(i) + '.npy', exon_table)
         sp.savetxt(options.fn_out + '_counts_' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')

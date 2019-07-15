@@ -2,7 +2,7 @@ import sys
 import scipy as sp
 import os
 import time
-import cPickle
+import pickle
 import gzip
 import numpy.random as npr
 
@@ -42,7 +42,7 @@ def __reverse_complement(seq):
 
 
 def prepare_kmers(regions, fn_genome, k):
-    print 'Preparing genomic kmers'
+    print('Preparing genomic kmers')
     cnt = 0
     # MM: creates array of empty sets (one set for each entry in annotation file)
     kmers1 = [set() for _ in regions]
@@ -52,15 +52,15 @@ def prepare_kmers(regions, fn_genome, k):
     chrms = sp.array([_.strip('chr') for _ in regions[:, 2]])
     # MM: sequence for each chrm in .fasta file
     for chrm, seq in __read_genome(fn_genome):
-        print 'processing %s' % chrm
+        print('processing %s' % chrm)
         # MM: array of all indices in chrms-array that match chrm name from .fasta
         idx = sp.where(chrms == chrm)[0]
         for i in idx:
             rec = regions[i, :]
             if cnt > 0 and cnt % 100 == 0:
                 # MM: regions.shape[0] is number of genes from annotation file
-                print '%i rounds to go. ETA %.0f seconds' \
-                      % (regions.shape[0] - cnt, (time.time() - t0) / cnt * (regions.shape[0] - cnt))
+                print('%i rounds to go. ETA %.0f seconds' \
+                      % (regions.shape[0] - cnt, (time.time() - t0) / cnt * (regions.shape[0] - cnt)))
             cnt += 1
 
             # TODO: when would that happen?
@@ -97,15 +97,15 @@ def clean_kmers(kmers1, kmers2, fn_pickle_all, fn_pickle_filt, k, fn_genome):
     else:
         kmer_pickle = 'all_kmers_k%i.pickle' % k
     
-    print 'Making kmers unique'
+    print('Making kmers unique')
     if os.path.exists(kmer_pickle):
-        (all_kmers1, all_kmers2) = cPickle.load(open(kmer_pickle, 'r'))
+        (all_kmers1, all_kmers2) = pickle.load(open(kmer_pickle, 'r'))
     else:
         # MM: creates dictionaries with values: 0 and keys: all existing kmers (from fasta)
         all_kmers1 = dict([[_, 0] for s in kmers1 for _ in s])
         all_kmers2 = dict([[_, 0] for s in kmers2 for _ in s])
         for chrm, seq in __read_genome(fn_genome):
-            print '\nprocessing %s' % chrm
+            print('\nprocessing %s' % chrm)
             for s in range(0, len(seq) - k + 1):
                 if s > 0 and s % 100000 == 0:
                     sys.stdout.write('.')
@@ -123,7 +123,7 @@ def clean_kmers(kmers1, kmers2, fn_pickle_all, fn_pickle_filt, k, fn_genome):
                     all_kmers2[__reverse_complement(seq[s:s + k])] += 1
                 except KeyError:
                     pass
-        cPickle.dump((all_kmers1, all_kmers2), open(kmer_pickle, 'w'), -1)
+        pickle.dump((all_kmers1, all_kmers2), open(kmer_pickle, 'w'), -1)
 
     ### remove all non-unique entries
     removed = 0
@@ -132,20 +132,20 @@ def clean_kmers(kmers1, kmers2, fn_pickle_all, fn_pickle_filt, k, fn_genome):
     for i, rec in enumerate(kmers1):
         size_old = len(rec)
         total += size_old
-        kmers1[i] = filter(lambda x: all_kmers1[x] == 1 and not x in all_kmers2, rec)
+        kmers1[i] = [x for x in rec if all_kmers1[x] == 1 and not x in all_kmers2]
         removed += (size_old - len(kmers1[i]))
     for i, rec in enumerate(kmers2):
         size_old = len(rec)
         total += size_old
-        kmers2[i] = filter(lambda x: all_kmers2[x] == 1 and not x in all_kmers1, rec)
+        kmers2[i] = [x for x in rec if all_kmers2[x] == 1 and not x in all_kmers1]
         removed += (size_old - len(kmers2[i]))
     if(float(total) != 0):
-        print 'Removed %i non-unique kmers (%.2f percent)' % (removed, removed / float(total) * 100)
+        print('Removed %i non-unique kmers (%.2f percent)' % (removed, removed / float(total) * 100))
 
     if fn_pickle_filt is not None:
-        cPickle.dump((kmers1, kmers2), open(fn_pickle_filt, 'w'), -1)
+        pickle.dump((kmers1, kmers2), open(fn_pickle_filt, 'w'), -1)
     else:
-        cPickle.dump((kmers1, kmers2), open(('filt_kmers_k%i.pickle' % k), 'w'), -1)
+        pickle.dump((kmers1, kmers2), open(('filt_kmers_k%i.pickle' % k), 'w'), -1)
     
     return (kmers1, kmers2)
 
@@ -171,7 +171,7 @@ def __get_counts_from_single_fastq(fn_fastqs, kmers1, kmers2, kmerThresh, k, ste
         use_fraction = True
 
     for fn_fastq in fn_fastqs:
-        print 'Processing %s' % fn_fastq
+        print('Processing %s' % fn_fastq)
         cnt = 0
         cnt1 = 0
         if fn_fastq.endswith('gz'):

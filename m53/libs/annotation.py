@@ -3,8 +3,9 @@ import scipy as sp
 import scipy.stats as spst
 import numpy as np
 import time
-import usefulTools as ut
+from . import utils as ut
 import os
+from functools import reduce
 
 # Some Numbers
 NMB_CHR = 23
@@ -180,7 +181,7 @@ def __get_overlap_genes(fn, format):
 
     ### find genes with overlapping annotations
     myOverlapGenes = []
-    for i in xrange(pos.shape[0]):
+    for i in range(pos.shape[0]):
         mypos = pos[i, :]
 
         ## same chr
@@ -362,9 +363,8 @@ def __read_annotation_file(fn, protein_coding_filter, file_format, legacy=False)
     # reading annotation file in
     data = __reading_anno(fn, overlapgenes, protein_coding_filter, file_format)
 
-    uq_g_id = data.keys()  # unique gene ids
     new_data = []
-    for gid in uq_g_id:
+    for gid in data:  # iterate over unique gene ids
         # process transcripts
         if len(data[gid]) == 1:
             temp = __process_single_transcript_genes(data[gid], legacy)

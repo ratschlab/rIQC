@@ -4,10 +4,10 @@ from optparse import OptionParser, OptionGroup
 import logging
 import glob
 
-from libs.annotation import *
-from libs.bam import *
-from libs.bam_sparse import *
-from libs.kmer import *
+from .libs.annotation import *
+from .libs.bam import *
+from .libs.bam_sparse import *
+from .libs.kmer import *
 
 
 def parse_options(argv):
@@ -70,11 +70,11 @@ def parse_options(argv):
         sys.exit(2)
     if sp.sum(int(options.dir_bam != '-') + int(options.fn_bam != '-')
               + int(options.dir_cnt != '-') + int(options.dir_fastq != '-')) != 1:
-        print "Please specify exactly one type of input file(s) (e.g.: Bam, Fastq, Count file)"
+        print("Please specify exactly one type of input file(s) (e.g.: Bam, Fastq, Count file)")
         parser.print_help()
         sys.exit(2)
     if options.dir_fastq != '-' and options.fn_genome == '-':
-        print >> sys.stderr, 'For usage on fastq files a genome file in fasta needs to be provided via -G/--genome'
+        print('For usage on fastq files a genome file in fasta needs to be provided via -G/--genome', file=sys.stderr)
         sys.exit(2)
     return options
 
@@ -175,7 +175,7 @@ def main():
     if options.dir_cnt != '-':
         count_files = 0
         cnt_file = None
-        print glob.glob(options.dir_cnt + "/counts_*.npy")
+        print(glob.glob(options.dir_cnt + "/counts_*.npy"))
         for cnt_file in glob.glob(options.dir_cnt + "/counts_*.npy"):
             count_files = count_files + 1
 
@@ -183,10 +183,10 @@ def main():
             header = sp.loadtxt(options.dir_cnt + "/counts_header.tsv", delimiter="\t", dtype="string")
             exon_t_gene = np.load(cnt_file)[:, :-2]
             my_counts = sp.zeros((exon_t_gene.shape[0], count_files, 2))
-            for i in xrange(count_files):
+            for i in range(count_files):
                 my_counts[:, i, :] = np.load(options.dir_cnt + '/counts_' + str(i) + '.npy')[:, -2:]
         else:
-            print "No count files found in specified directory"
+            print("No count files found in specified directory")
             sys.exit(1)
 
     else:
@@ -272,7 +272,7 @@ def main():
                                                  options.doPseudo, options.relativeBinning, options.averageFactors)
     np.save(options.dir_out + "/scalingFactors.npy", avg_scale)
     sp.savetxt(options.dir_out + "/scalingFactors_header.tsv", header, delimiter="\t", fmt="%s")
-    for i in xrange(my_counts.shape[1]):
+    for i in range(my_counts.shape[1]):
         sp.savetxt(options.dir_out + "/scalingFactors_" + str(i) + ".tsv", np.concatenate((description, avg_scale[i, :, :])), delimiter="\t", fmt="%s")
 
 
