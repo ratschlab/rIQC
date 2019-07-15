@@ -23,11 +23,14 @@ Alignment-free RNA degradation tool
 * Free software: MIT license
 
 
-Features
---------
+Installation
+------------
 
-* TODO
+The simplest is to install via:
+    pip install m53
 
+If you downloaded the code directly, you can also run:
+    python setup.py install
 
 Usage
 -----
@@ -35,12 +38,12 @@ Usage
 Degradation Detection in Aligned Files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Example:
-    python .../degradation_tool/checkBias_2.0.py --bam_dir='...' --anno_fn='...' --out_dir='...' --log='...'
+    m53 --bam_dir='...' --anno_fn='...' --out_dir='...' --log='...'
 
 Degradation Detection in Non-Aligned Files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Example:
-    python .../degradation_tool/checkBias_2.0.py --fastq_dir='...' --genome='...' --anno_fn='...'
+    m53 --fastq_dir='...' --genome='...' --anno_fn='...'
     --out_dir='...' --out_fn='...' --pickle_all='...' --pickle_filt='...' --log='...'
 
 All Options for Degradation Detection
