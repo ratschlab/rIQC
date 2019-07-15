@@ -4,7 +4,6 @@ import scipy as sp
 import sys
 import os
 import warnings
-from sets import Set
 
 
 def get_counts_from_single_bam(fn_bam, regions):

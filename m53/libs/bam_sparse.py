@@ -6,7 +6,6 @@ import sys
 import os
 import warnings
 import h5py
-from sets import Set
 
 
 def get_counts_from_single_bam_sparse(fn_bam, regions):
