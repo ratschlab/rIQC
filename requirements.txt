@@ -1,8 +1,4 @@
-# dependencies for 'silly_sum' example
-pandas==0.22
-Click==6.0
-
-# dependencies for all other python scripts
+# dependencies m53
 h5py==2.6.0
 logging==0.4.9.6
 matplotlib==1.5.3

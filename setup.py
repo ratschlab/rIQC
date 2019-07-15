@@ -16,8 +16,8 @@ with open('requirements.txt') as f:
 test_requirements = ['pytest']
 
 setup(
-    author="Kjong Lehmann",
-    author_email='kjong.lehmann@inf.ethz.ch',
+    author="Kjong Lehmann, Andre Kahles",
+    author_email='kjong.lehmann@inf.ethz.ch, andre.kahles@inf.ethz.ch',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
@@ -33,7 +33,7 @@ setup(
     description="Alignment-free RNA degradation tool",
     entry_points={
         'console_scripts': [
-            'silly_sum=m53.silly_sum:main',
+            'm53=m53.m53:main',
         ],
     },
     install_requires=requirements,
