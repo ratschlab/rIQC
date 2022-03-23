@@ -1,5 +1,4 @@
 import numpy as np
-import scipy as sp
 from optparse import OptionParser, OptionGroup
 import logging
 import glob
@@ -68,7 +67,7 @@ def parse_options(argv):
     if len(argv) < 2:
         parser.print_help()
         sys.exit(2)
-    if sp.sum(int(options.dir_bam != '-') + int(options.fn_bam != '-')
+    if np.sum(int(options.dir_bam != '-') + int(options.fn_bam != '-')
               + int(options.dir_cnt != '-') + int(options.dir_fastq != '-')) != 1:
         print("Please specify exactly one type of input file(s) (e.g.: Bam, Fastq, Count file)")
         parser.print_help()
@@ -80,7 +79,7 @@ def parse_options(argv):
 
 
 def __get_counts_of_marginal_exons(exon_t_gene, data):
-    my_counts = sp.zeros((exon_t_gene.shape[0], data.shape[1], 2))
+    my_counts = np.zeros((exon_t_gene.shape[0], data.shape[1], 2))
 
     for i, rec in enumerate(exon_t_gene):
 
@@ -105,21 +104,21 @@ def get_scaling_factors(exon_t_gene, my_counts, nmb_bins=10,
     upper_length_bound = np.ceil(np.amax(exon_lengths))
     nmb_exons = exon_lengths.shape[0]
 
-    scale = sp.zeros((my_counts.shape[0], my_counts.shape[1]))
+    scale = np.zeros((my_counts.shape[0], my_counts.shape[1]))
     #MM average scales with interval and #genes that contribute
-    avg_scale = sp.zeros((my_counts.shape[1], nmb_bins, 4))
+    avg_scale = np.zeros((my_counts.shape[1], nmb_bins, 4))
 
     #MM for every file that was read in
     for i in range(my_counts.shape[1]):
         #MM only take genes that have some count
         #MM i_ok is a boolean np.ndarray as long as number of genes
         if doPseudo:
-            i_ok = sp.union1d(np.where(my_counts[:, i, 0] > 0)[0],
+            i_ok = np.union1d(np.where(my_counts[:, i, 0] > 0)[0],
                               np.where(my_counts[:, i, 1] > 0)[0])
             # MM add pseudocount to avoid division by 0
             my_counts[i_ok, i, :] = my_counts[i_ok, i, :] + 1
         else:
-            i_ok = sp.intersect1d(np.where(my_counts[:, i, 0] > 0)[0],
+            i_ok = np.intersect1d(np.where(my_counts[:, i, 0] > 0)[0],
                                   np.where(my_counts[:, i, 1] > 0)[0])
 
         #MM scale-entrys stay 0 if they are not in i_ok
@@ -137,19 +136,19 @@ def get_scaling_factors(exon_t_gene, my_counts, nmb_bins=10,
             else:
                 low_b = upper_length_bound / nmb_bins * j
                 up_b = upper_length_bound / nmb_bins * (j + 1)
-                idx_l = sp.intersect1d(np.where(low_b < exon_lengths)[0], np.where(exon_lengths <= up_b)[0])
+                idx_l = np.intersect1d(np.where(low_b < exon_lengths)[0], np.where(exon_lengths <= up_b)[0])
 
                 avg_scale[i, j, 2] = low_b
                 avg_scale[i, j, 3] = up_b
 
             # indices of genes that have right length and a scale factor
-            comb_idx = sp.intersect1d(i_ok, idx_l)
+            comb_idx = np.intersect1d(i_ok, idx_l)
             
 
             if comb_idx.shape[0] != 0 and averageFactors:
-                avg_scale[i, j, 0] = sp.sum(scale[comb_idx, i]) / comb_idx.shape[0]
+                avg_scale[i, j, 0] = np.sum(scale[comb_idx, i]) / comb_idx.shape[0]
             elif comb_idx.shape[0] != 0:  # Take median
-                avg_scale[i, j, 0] = sp.percentile(scale[comb_idx, i], 50)
+                avg_scale[i, j, 0] = np.percentile(scale[comb_idx, i], 50)
             else:
                 avg_scale[i, j, 0] = 0
                 assert comb_idx.shape[0] == 0
@@ -180,9 +179,9 @@ def main():
             count_files = count_files + 1
 
         if cnt_file is not None and count_files > 0:
-            header = sp.loadtxt(options.dir_cnt + "/counts_header.tsv", delimiter="\t", dtype="string")
+            header = np.loadtxt(options.dir_cnt + "/counts_header.tsv", delimiter="\t", dtype="string")
             exon_t_gene = np.load(cnt_file)[:, :-2]
-            my_counts = sp.zeros((exon_t_gene.shape[0], count_files, 2))
+            my_counts = np.zeros((exon_t_gene.shape[0], count_files, 2))
             for i in range(count_files):
                 my_counts[:, i, :] = np.load(options.dir_cnt + '/counts_' + str(i) + '.npy')[:, -2:]
         else:
@@ -260,10 +259,10 @@ def main():
         ### normalize counts by exon length
         logging.info("Normalize counts by exon length")
         if options.qMode == 'raw':
-            exonl = sp.array([int(x.split(':')[1].split('-')[1]) -
+            exonl = np.array([int(x.split(':')[1].split('-')[1]) -
                               int(x.split(':')[1].split('-')[0]) + 1 for x in exon_t_gene[:, :2].ravel('C')],
                              dtype='float') / 1000.
-            data /= sp.tile(exonl[:, sp.newaxis], data.shape[1])
+            data /= np.tile(exonl[:, np.newaxis], data.shape[1])
 
         # get counts from both ends
         my_counts = __get_counts_of_marginal_exons(exon_t_gene, data)
@@ -271,9 +270,9 @@ def main():
     description, avg_scale = get_scaling_factors(exon_t_gene, my_counts, options.nmb_bins,
                                                  options.doPseudo, options.relativeBinning, options.averageFactors)
     np.save(options.dir_out + "/scalingFactors.npy", avg_scale)
-    sp.savetxt(options.dir_out + "/scalingFactors_header.tsv", header, delimiter="\t", fmt="%s")
+    np.savetxt(options.dir_out + "/scalingFactors_header.tsv", header, delimiter="\t", fmt="%s")
     for i in range(my_counts.shape[1]):
-        sp.savetxt(options.dir_out + "/scalingFactors_" + str(i) + ".tsv", np.concatenate((description, avg_scale[i, :, :])), delimiter="\t", fmt="%s")
+        np.savetxt(options.dir_out + "/scalingFactors_" + str(i) + ".tsv", np.concatenate((description, avg_scale[i, :, :])), delimiter="\t", fmt="%s")
 
 
 if __name__ == "__main__":

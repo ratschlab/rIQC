@@ -1,4 +1,3 @@
-import scipy as sp
 import scipy.stats as spst
 import numpy as np
 
@@ -68,7 +67,7 @@ def parse_options(argv):
     if len(argv) < 2:
         parser.print_help()
         sys.exit(2)
-    if sp.sum(int(options.dir_bam != '-') + int(options.fn_bam != '-')
+    if np.sum(int(options.dir_bam != '-') + int(options.fn_bam != '-')
               + int(options.dir_cnt != '-') + int(options.dir_fastq != '-')) != 1:
         print("Please specify exactly one type of input file(s) (e.g.: Exon quantification, Bam Files)")
         parser.print_help()
@@ -80,7 +79,7 @@ def parse_options(argv):
 
 
 def __get_counts_from_marginal_exons(exon_t_gene, data):
-    my_counts = sp.zeros((exon_t_gene.shape[0], data.shape[1], 2))
+    my_counts = np.zeros((exon_t_gene.shape[0], data.shape[1], 2))
 
     for i, rec in enumerate(exon_t_gene):
 
@@ -167,21 +166,21 @@ def main():
     # normalize counts by exon length
     logging.info("Normalize counts by exon length")
     if options.qMode == 'raw':
-        exonl = sp.array([int(x.split(':')[1].split('-')[1])
+        exonl = np.array([int(x.split(':')[1].split('-')[1])
                           - int(x.split(':')[1].split('-')[0]) + 1 for x in exon_t_gene[:, :2].ravel('C')],
                          dtype='float') / 1000.
-        data /= sp.tile(exonl[:, sp.newaxis], data.shape[1])
+        data /= np.tile(exonl[:, np.newaxis], data.shape[1])
 
     # Get counts from the first an last exon
     logging.info("Get counts from marginal exons")
     my_counts = __get_counts_from_marginal_exons(exon_t_gene, data)
 
     #MM CAVEAT: Order of exon-positions and counts might be switched (strand! --> see fct to get counts)
-    sp.savetxt(options.fn_out + "_header.tsv", header, delimiter="\t", fmt="%s")
+    np.savetxt(options.fn_out + "_header.tsv", header, delimiter="\t", fmt="%s")
     for i in range(my_counts.shape[1]):
         exon_table = np.column_stack((exon_t_gene[:, :], my_counts[:, i, :]))
         np.save(options.fn_out + '_counts_' + str(i) + '.npy', exon_table)
-        sp.savetxt(options.fn_out + '_counts_' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
+        np.savetxt(options.fn_out + '_counts_' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
 
 
 if __name__ == "__main__":

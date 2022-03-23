@@ -1,28 +1,28 @@
 import matplotlib
 matplotlib.use('AGG')
 import matplotlib.pyplot as plt
-import scipy as sp
+import numpy as np
 
 
 def plotBias(vals, fn_plot, myidx, logScale = False, refname = 'TCGA'):
 
-    iqr    = ( (sp.percentile(vals[~myidx],75) - sp.percentile(vals[~myidx],25) ) * 1.5)
-    iqr2    = ( (sp.percentile(vals[myidx],75) - sp.percentile(vals[myidx],25) ) * 1.5)
+    iqr    = ( (np.percentile(vals[~myidx],75) - np.percentile(vals[~myidx],25) ) * 1.5)
+    iqr2    = ( (np.percentile(vals[myidx],75) - np.percentile(vals[myidx],25) ) * 1.5)
 
-    sidx   = sp.argsort(vals)
+    sidx   = np.argsort(vals)
     vals   = vals[sidx]
     myidx = myidx[sidx]
 
     fig  = plt.figure(figsize=(12,10))
     ax   = fig.add_subplot(111)
     ax_c = ax.twinx()
-    ax.vlines(sp.array(sp.arange(sp.sum(vals.shape[0])))[myidx],[0], vals[myidx], label = '%s Reference'%refname)
-    ax.vlines(sp.array(sp.arange(sp.sum(vals.shape[0])))[~myidx],[0], vals[~myidx], color = 'r', label = 'Your Samples')
+    ax.vlines(np.array(np.arange(np.sum(vals.shape[0])))[myidx],[0], vals[myidx], label = '%s Reference'%refname)
+    ax.vlines(np.array(np.arange(np.sum(vals.shape[0])))[~myidx],[0], vals[~myidx], color = 'r', label = 'Your Samples')
 
     ax.plot([0,vals.shape[0]],[3,3], '--', color = 'green')
     ax.plot([0,vals.shape[0]],[5,5] , '--',color = 'green')
-    ax.plot([0,vals.shape[0]],[iqr + sp.percentile(vals[~myidx], 75),iqr + sp.percentile(vals[~myidx], 75)], '--',color = 'green')
-    ax.plot([0,vals.shape[0]],[iqr2 + sp.percentile(vals[myidx], 75),iqr2 + sp.percentile(vals[myidx], 75)], '--',color = 'green')
+    ax.plot([0,vals.shape[0]],[iqr + np.percentile(vals[~myidx], 75),iqr + np.percentile(vals[~myidx], 75)], '--',color = 'green')
+    ax.plot([0,vals.shape[0]],[iqr2 + np.percentile(vals[myidx], 75),iqr2 + np.percentile(vals[myidx], 75)], '--',color = 'green')
 
 #    ax.plot([0,vals.shape[0]],[6.25,6.25],'--', color = 'green')
     ax.plot([0,vals.shape[0]],[10,10] , '--',color = 'green')
@@ -35,12 +35,12 @@ def plotBias(vals, fn_plot, myidx, logScale = False, refname = 'TCGA'):
 
     ### add right side ticks
     if logScale:       
-        tick_thresholds = sp.array([3,5,iqr+sp.percentile(vals[~myidx],75),iqr2 + sp.percentile(vals[myidx], 75), 10])#sp.array(sp.log([3,5,iqr+sp.percentile(vals,75), 10, 50]))
+        tick_thresholds = np.array([3,5,iqr+np.percentile(vals[~myidx],75),iqr2 + np.percentile(vals[myidx], 75), 10])
     else:
-        tick_thresholds = sp.array([3,5,iqr+sp.percentile(vals[~myidx],75),iqr2 + sp.percentile(vals[myidx], 75), 10])
-    tick_idx        = sp.argsort(tick_thresholds)
+        tick_thresholds = np.array([3,5,iqr+np.percentile(vals[~myidx],75),iqr2 + np.percentile(vals[myidx], 75), 10])
+    tick_idx        = np.argsort(tick_thresholds)
     tick_thresholds = tick_thresholds[tick_idx]
-    tick_thresholds = sp.around(tick_thresholds, decimals = 2)
+    tick_thresholds = np.around(tick_thresholds, decimals = 2)
     ax_c.set_yticks(tick_thresholds)
 
     tick_thresholds                = tick_thresholds.astype('|S4')

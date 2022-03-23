@@ -1,5 +1,4 @@
 import pysam
-import scipy as sp
 import scipy.stats as spst
 import numpy as np
 import time
@@ -26,7 +25,7 @@ def __filter_non_chr_contigs(exon_t_gene):
     chr_whitelist = [str(x) for x in range(NMB_CHR)]
     chr_whitelist.extend(['chr%i' % i for i in range(NMB_CHR)])
     chr_whitelist.extend(['chrx', 'chry', 'chrm', 'x', 'y', 'm', 'mt'])
-    k_idx = sp.array([x.lower() in chr_whitelist for x in exon_t_gene[:, 2]], dtype='bool')
+    k_idx = np.array([x.lower() in chr_whitelist for x in exon_t_gene[:, 2]], dtype='bool')
     
     return exon_t_gene[k_idx, :]
 
@@ -36,11 +35,11 @@ def __filter_gene_length(exon_t_gene, length):
     t_75 = spst.scoreatpercentile(exon_t_gene[:, 4].astype('float'), 75)
 
     if length == 'uq':
-        k_idx = sp.where(exon_t_gene[:, 4].astype('float') > t_75)[0]
+        k_idx = np.where(exon_t_gene[:, 4].astype('float') > t_75)[0]
     elif length == 'mq':
-        k_idx = sp.where((exon_t_gene[:, 4].astype('float') > t_25) & (exon_t_gene[:, 4].astype('float') < t_75))[0]
+        k_idx = np.where((exon_t_gene[:, 4].astype('float') > t_25) & (exon_t_gene[:, 4].astype('float') < t_75))[0]
     elif length == 'lq':
-        k_idx = sp.where(exon_t_gene[:, 4].astype('float') < t_25)[0]
+        k_idx = np.where(exon_t_gene[:, 4].astype('float') < t_25)[0]
     else:
         raise Exception('--length should be one of: uq, mq, lq -- currently is: %s' % length)
     
@@ -66,7 +65,7 @@ def get_annotation_table(fn_genes, fn_anno_tmp, fn_anno, proteinCodingFilter, le
         if fn_anno_tmp == '':
             fn_anno_tmp = __name_anno_tmp_file(proteinCodingFilter, legacy)
         if os.path.exists(fn_anno_tmp):
-            exon_t_gene = sp.loadtxt(fn_anno_tmp, delimiter='\t', dtype='string')
+            exon_t_gene = np.loadtxt(fn_anno_tmp, delimiter='\t', dtype='str')
         else:
             if fn_anno.lower().endswith('gff') or fn_anno.lower().endswith('gff3'):
                 exon_t_gene = __read_annotation_file(fn_anno, proteinCodingFilter, file_format='gff', legacy=legacy)
@@ -76,7 +75,7 @@ def get_annotation_table(fn_genes, fn_anno_tmp, fn_anno, proteinCodingFilter, le
                 raise Exception(
                     "Only annotation files in formats: gff and gtf are supported. File name must end accordingly")
             # the temporary anno_*.tsv is saved without being filtered for "interesting" genes
-            sp.savetxt(fn_anno_tmp, exon_t_gene, delimiter='\t', fmt='%s')
+            np.savetxt(fn_anno_tmp, exon_t_gene, delimiter='\t', fmt='%s')
 
         # Filtering
         exon_t_gene = __filter_non_chr_contigs(exon_t_gene)
@@ -84,14 +83,14 @@ def get_annotation_table(fn_genes, fn_anno_tmp, fn_anno, proteinCodingFilter, le
             exon_t_gene = __filter_gene_length(exon_t_gene, length)
 
     else:
-        exon_t_gene = sp.loadtxt(fn_genes, delimiter=' ', dtype='string')
+        exon_t_gene = np.loadtxt(fn_genes, delimiter=' ', dtype='str')
 
     return exon_t_gene
 
 
 def __get_transcript_length(rec, legacy=False):
     # list of all exon-intervals
-    ex_pieces = sp.array(rec.split(':')[1].split(','))
+    ex_pieces = np.array(rec.split(':')[1].split(','))
     lgt = 0
 
     for i, x in enumerate(ex_pieces[0:]):
@@ -107,7 +106,7 @@ def __get_transcript_length_bex(rec, firstEx, lastEx, legacy=False):
     """
     Returns transcript length defined as sum of length of exons
     """
-    expieces = sp.array(rec.split(':')[1].split(','))
+    expieces = np.array(rec.split(':')[1].split(','))
     foundFirst = False
     lgt = 0
     for i, x in enumerate(expieces):
@@ -158,13 +157,13 @@ def __get_overlap_genes(fn, format):
                 data.append([tags['Parent'], '%s:%s-%s' % (lSpl[SEQ_NAME], lSpl[START], lSpl[END])])
 
     # data contains two columns: gene_ID, GeneLocus (e.g., chr7:130020290-130027948:+)
-    data = sp.array(data)
+    data = np.array(data)
 
     # fix positions
     pos = data[:, 1]
-    pos = sp.array([x.split(':')[0] + '-' + x.split(':')[1] for x in pos])
-    pos = sp.array([x.strip('chr') for x in pos])
-    pos = sp.array([x.split('-') for x in pos])
+    pos = np.array([x.split(':')[0] + '-' + x.split(':')[1] for x in pos])
+    pos = np.array([x.strip('chr') for x in pos])
+    pos = np.array([x.split('-') for x in pos])
     pos[pos[:, 0] == 'X', 0] = '23'
     pos[pos[:, 0] == 'Y', 0] = '24'
 
@@ -175,7 +174,7 @@ def __get_overlap_genes(fn, format):
     pos = pos.astype('int')
 
     ### sort everything nicely
-    sidx = sp.lexsort((pos[:, 2], pos[:, 1], pos[:, 0]))
+    sidx = np.lexsort((pos[:, 2], pos[:, 1], pos[:, 0]))
     pos = pos[sidx, :]
     data = data[sidx, :]
 
@@ -196,24 +195,24 @@ def __get_overlap_genes(fn, format):
         iUBSt = mypos[1] >= pos[:, 1]
 
         ## on both ends the only entry that overlaps to i is i itself --> continue
-        if (sp.sum(iChr & iLBEnd & iUBEnd) == 1) and (sp.sum(iChr & iLBSt & iUBSt) == 1):
+        if (np.sum(iChr & iLBEnd & iUBEnd) == 1) and (np.sum(iChr & iLBSt & iUBSt) == 1):
             continue
 
         ### extract IDs of overlapping genes
         overlapgenesSt = data[iChr & iUBSt & iLBSt, 0]
         overlapgenesEnd = data[iChr & iUBEnd & iLBEnd, 0]
 
-        overlapgenesSt = sp.array([x.split('|')[0] for x in overlapgenesSt])
-        overlapgenesEnd = sp.array([x.split('|')[0] for x in overlapgenesEnd])
+        overlapgenesSt = np.array([x.split('|')[0] for x in overlapgenesSt])
+        overlapgenesEnd = np.array([x.split('|')[0] for x in overlapgenesEnd])
 
         ### this shoudl actually never happen ...
-        if (sp.unique(overlapgenesSt).shape[0] == 1) and (sp.unique(overlapgenesEnd).shape[0] == 1):
+        if (np.unique(overlapgenesSt).shape[0] == 1) and (np.unique(overlapgenesEnd).shape[0] == 1):
             continue
-        if sp.unique(overlapgenesSt).shape[0] > 1:
+        if np.unique(overlapgenesSt).shape[0] > 1:
             myOverlapGenes.extend(overlapgenesSt.tolist())
-        if sp.unique(overlapgenesEnd).shape[0] > 1:
+        if np.unique(overlapgenesEnd).shape[0] > 1:
             myOverlapGenes.extend(overlapgenesEnd.tolist())
-    return sp.unique(myOverlapGenes)
+    return np.unique(myOverlapGenes)
 
 
 def __reading_anno(fn, overlapgenes, protein_coding_filter, format):
@@ -316,23 +315,23 @@ def __process_single_transcript_genes(tcrpt, legacy=False):
 
 def __process_multi_transcript_genes(tcrpts, legacy=False):
     # CAVEAT: We only use transcript isoforms that have at least two exons
-    if sp.sum(np.core.defchararray.find(tcrpts, ',') != -1) != len(tcrpts):
+    if np.sum(np.core.defchararray.find(tcrpts, ',') != -1) != len(tcrpts):
         return None
 
     # make matrix of transcript struct and length
     myExons = [x.split(':')[1].split(',') for x in tcrpts]
     # unravel exons into one list of exons
-    myExons = sp.array([reduce(lambda x, y: x + y, myExons)]).ravel()
-    myExonsInt = sp.array([x.split('-') for x in myExons]).astype('int')
+    myExons = np.array([reduce(lambda x, y: x + y, myExons)]).ravel()
+    myExonsInt = np.array([x.split('-') for x in myExons]).astype('int')
 
     # sort this
-    sidxInt = sp.lexsort((myExonsInt[:, 1], myExonsInt[:, 0]))
+    sidxInt = np.lexsort((myExonsInt[:, 1], myExonsInt[:, 0]))
     myExons = myExons[sidxInt]
     myExonsInt = myExonsInt[sidxInt, :]
 
     # see how often we got each item
     dummy, uidx, dists = ut.unique_rows(myExonsInt, index=True, counts=True)
-    N_match = sp.sum(dists == len(tcrpts))
+    N_match = np.sum(dists == len(tcrpts))
 
     # make sure we have at least 3 constitutive exons
     if N_match < 3:
@@ -353,7 +352,7 @@ def __process_multi_transcript_genes(tcrpts, legacy=False):
     firstEx = tcrpts[0].split(':')[0] + ':' + firstEx + ':' + tcrpts[0].split(':')[2]
     lastEx = tcrpts[0].split(':')[0] + ':' + lastEx + ':' + tcrpts[0].split(':')[2]
 
-    return [firstEx, lastEx, tcrpts[0].split(':')[0], tcrpts[0].split(':')[2], str(sp.median(myExStrucL))]
+    return [firstEx, lastEx, tcrpts[0].split(':')[0], tcrpts[0].split(':')[2], str(np.median(myExStrucL))]
 
 
 def __read_annotation_file(fn, protein_coding_filter, file_format, legacy=False):
@@ -377,11 +376,11 @@ def __read_annotation_file(fn, protein_coding_filter, file_format, legacy=False)
         else:
             temp.extend([gid])
             new_data.append(temp)
-    new_data = sp.array(new_data)
-    s_idx = sp.argsort(new_data[:, 5])
+    new_data = np.array(new_data)
+    s_idx = np.argsort(new_data[:, 5])
     new_data = new_data[s_idx, :]
     # filter gene with no name
-    return sp.array(new_data)
+    return np.array(new_data)
 
 
 def __get_tags_gff(tagline):

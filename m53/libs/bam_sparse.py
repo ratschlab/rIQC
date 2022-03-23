@@ -1,7 +1,7 @@
 import pysam
 import time
-import scipy as sp
 import scipy.sparse as spst
+import numpy as np
 import sys
 import os
 import warnings
@@ -14,23 +14,23 @@ def get_counts_from_single_bam_sparse(fn_bam, regions):
 
     if not os.stat(fn_bam).st_size > 0:
         warnings.warn('WARNING: alignment file %s seems to be empty and will be skipped! \n' % fn_bam)
-        dummy = sp.zeros(regions.shape[0] * 2)
-        dummy[:] = sp.nan
+        dummy = np.zeros(regions.shape[0] * 2)
+        dummy[:] = np.nan
         return dummy
 
     if fn_bam.lower().endswith('npz'):
-        IN = sp.load(fn_bam)
+        IN = np.load(fn_bam)
     else:
         IN = h5py.File(fn_bam, 'r')
 
-    refseqs = sp.unique([x.split('_')[0] for x in IN])
-    cnts = sp.zeros((regions.shape[0], 2), dtype='float')
+    refseqs = np.unique([x.split('_')[0] for x in IN])
+    cnts = np.zeros((regions.shape[0], 2), dtype='float')
     t0 = time.time()
 
     if len(regions.shape) > 1:
-        sidx = sp.argsort(regions[:, 0])
+        sidx = np.argsort(regions[:, 0])
     else:
-        sidx = sp.argsort(regions)
+        sidx = np.argsort(regions)
 
     last_chrm = ''
 
@@ -61,11 +61,11 @@ def get_counts_from_single_bam_sparse(fn_bam, regions):
                     (IN[chrm + '_reads_dat'][:], (IN[chrm + '_reads_row'][:], IN[chrm + '_reads_col'][:])),
                     shape=IN[chrm + '_reads_shp'][:], dtype='uint32').tocsc()
                 last_chrm = chrm
-            cnt1 = int(sp.ceil(sp.sum(cache[0, start1:end1].todense()) / 50.0))
+            cnt1 = int(np.ceil(np.sum(cache[0, start1:end1].todense()) / 50.0))
             if start2 is None:
                 cnt2 = cnt1
             else:
-                cnt2 = int(sp.ceil(sp.sum(cache[0, start2:end2].todense()) / 50.0))
+                cnt2 = int(np.ceil(np.sum(cache[0, start2:end2].todense()) / 50.0))
             # print '%s\t%s\tcnt1: %i\tcnt2: %i' % (rec[0], rec[1], cnt1, cnt2)
         except:
             print('Ignored %s' % chrm, file=sys.stderr)
@@ -77,7 +77,7 @@ def get_counts_from_single_bam_sparse(fn_bam, regions):
     IN.close()
 
     return cnts.ravel('C')
-    # return sp.array(cnts, dtype='float').ravel('C')
+    # return np.array(cnts, dtype='float').ravel('C')
 
 
 def get_counts_from_multiple_bam_sparse(fn_bams, regions):
@@ -85,7 +85,7 @@ def get_counts_from_multiple_bam_sparse(fn_bams, regions):
         files"""
 
     if len(fn_bams) == 1:
-        return get_counts_from_single_bam_sparse(fn_bams[0], regions)[:, sp.newaxis]
+        return get_counts_from_single_bam_sparse(fn_bams[0], regions)[:, np.newaxis]
     else:
-        return sp.hstack(
-            [get_counts_from_single_bam_sparse(fn_bams[i], regions)[:, sp.newaxis] for i in range(len(fn_bams))])
+        return np.hstack(
+            [get_counts_from_single_bam_sparse(fn_bams[i], regions)[:, np.newaxis] for i in range(len(fn_bams))])

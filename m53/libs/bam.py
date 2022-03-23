@@ -1,8 +1,8 @@
 import pysam
 import time
-import scipy as sp
 import sys
 import os
+import numpy as np
 import warnings
 
 
@@ -13,24 +13,24 @@ def get_counts_from_single_bam(fn_bam, regions):
     if not os.path.exists(fn_bam + '.bai'):
         # raise Exception('\nERROR: alignment file %s seems not to be indexed\n' % fn_bam)
         warnings.warn('WARNING: alignment file %s seems not to be indexed and will be skipped! \n' % fn_bam)
-        dummy = sp.zeros(regions.shape[0] * 2)
-        dummy[:] = sp.nan
+        dummy = np.zeros(regions.shape[0] * 2)
+        dummy[:] = np.nan
         return dummy
     if not os.stat(fn_bam).st_size > 0:
         warnings.warn('WARNING: alignment file %s seems to be empty and will be skipped! \n' % fn_bam)
-        dummy = sp.zeros(regions.shape[0] * 2)
-        dummy[:] = sp.nan
+        dummy = np.zeros(regions.shape[0] * 2)
+        dummy[:] = np.nan
         return dummy
 
     samfile = pysam.Samfile(fn_bam, 'rb')
     refseqs = samfile.references
-    cnts = sp.zeros((regions.shape[0], 2), dtype='float')
+    cnts = np.zeros((regions.shape[0], 2), dtype='float')
     t0 = time.time()
 
     if len(regions.shape) > 1:
-        sidx = sp.argsort(regions[:, 0])
+        sidx = np.argsort(regions[:, 0])
     else:
-        sidx = sp.argsort(regions)
+        sidx = np.argsort(regions)
 
     for i, ii in enumerate(sidx):
         rec = regions[ii]
@@ -55,15 +55,15 @@ def get_counts_from_single_bam(fn_bam, regions):
             end2 = int(rec[1].split(':')[1].split('-')[1])
         try:
             # cnt1    = len([1 for read in samfile.fetch(chrm, start1, end1) if not (read.is_secondary)]) #Otherwise does not match firebrowse
-            cnt1 = int(sp.ceil(sp.sum(
-                [sp.sum((sp.array(read.positions) >= start1) & (sp.array(read.positions) < end1)) for read in
+            cnt1 = int(np.ceil(np.sum(
+                [np.sum((np.array(read.positions) >= start1) & (np.array(read.positions) < end1)) for read in
                  samfile.fetch(chrm, start1, end1) if not read.is_secondary]) / 50.0))
             if start2 is None:
                 cnt2 = cnt1
             else:
                 # cnt2    = len([1 for read in samfile.fetch(chrm, start2, end2) if not (read.is_secondary)]) #Otherwise does not match firebrowse
-                cnt2 = int(sp.ceil(sp.sum(
-                    [sp.sum((sp.array(read.positions) >= start2) & (sp.array(read.positions) < end2)) for read in
+                cnt2 = int(np.ceil(np.sum(
+                    [np.sum((np.array(read.positions) >= start2) & (np.array(read.positions) < end2)) for read in
                      samfile.fetch(chrm, start2, end2) if not read.is_secondary]) / 50.0))
             # print '%s\t%s\tcnt1: %i\tcnt2: %i' % (rec[0], rec[1], cnt1, cnt2)
         except ValueError:
@@ -76,7 +76,7 @@ def get_counts_from_single_bam(fn_bam, regions):
     samfile.close()
 
     return cnts.ravel('C')
-    # return sp.array(cnts, dtype='float').ravel('C')
+    # return np.array(cnts, dtype='float').ravel('C')
 
 
 def get_counts_from_multiple_bam(fn_bams, regions):
@@ -84,6 +84,6 @@ def get_counts_from_multiple_bam(fn_bams, regions):
         files"""
 
     if len(fn_bams) == 1:
-        return get_counts_from_single_bam(fn_bams[0], regions)[:, sp.newaxis]
+        return get_counts_from_single_bam(fn_bams[0], regions)[:, np.newaxis]
     else:
-        return sp.hstack([get_counts_from_single_bam(fn_bams[i], regions)[:, sp.newaxis] for i in range(len(fn_bams))])
+        return np.hstack([get_counts_from_single_bam(fn_bams[i], regions)[:, np.newaxis] for i in range(len(fn_bams))])

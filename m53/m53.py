@@ -1,4 +1,3 @@
-import scipy as sp
 import scipy.stats as spst
 import numpy as np
 
@@ -26,6 +25,7 @@ def parse_options(argv):
     sample_input.add_option('', '--bam_dir',          dest='dir_bam', metavar='FILE', help='Directory of bam files', default='-')
     sample_input.add_option('', '--bam_fn',           dest='fn_bam', metavar='FIlE', help='Specifies single bam file', default='-')
     sample_input.add_option('', '--fastq_dir',        dest='dir_fastq', metavar='FILE', help='Directory of fastq files', default='-')
+    sample_input.add_option('', '--fastq_fn',        dest='fn_fastq', metavar='FILE', help='Specifies single fastq file', default='-')
     sample_input.add_option('', '--cnt_dir',          dest='dir_cnt', metavar='FILE', help='Directory of pre-produced tab delimited count files', default='-')
 
     sample_input.add_option('', '--scale_factors_dir', dest='dir_scale_factors', metavar='FILE', help='Directory of scaling factor files', default='-')
@@ -76,7 +76,7 @@ def parse_options(argv):
     
     opt_kmer = OptionGroup(parser, 'Options for k-mer counting')
 
-    opt_kmer.add_option('', '--kmer_length', dest='k', type='int', help='Length of k-mer for alignmentfree counting', default=27)
+    opt_kmer.add_option('', '--kmer_length', dest='k', type='int', help='Length of k-mer for alignmentfree counting [27]', default=27)
     opt_kmer.add_option('', '--reads_kmer',  dest='kmerThresh', type='float', help='Required active reads per sample or if in [0, 1] then fraction of input reads considered', default=50000)
     opt_kmer.add_option('', '--step_k',      dest='step_k', type='int', help='Step-size for k-mer counting', default=4)
 
@@ -89,12 +89,12 @@ def parse_options(argv):
     if len(argv) < 2:
         parser.print_help()
         sys.exit(2)
-    if sp.sum(int(options.dir_bam != '-') + int(options.fn_bam != '-')
-              + int(options.dir_cnt != '-') + int(options.dir_fastq != '-')) != 1:
+    if np.sum(int(options.dir_bam != '-') + int(options.fn_bam != '-')
+              + int(options.dir_cnt != '-') + int(options.dir_fastq != '-') + int(options.fn_fastq != '-')) != 1:
         print("Please specify exactly one type of input file(s) (e.g.: Bam, Fastq, Count file)")
         parser.print_help()
         sys.exit(2)
-    if options.dir_fastq != '-' and options.fn_genome == '-':
+    if (options.dir_fastq != '-' or options.fn_fastq != '-') and (options.fn_genome == '-'):
         print('For usage on fastq files a genome file in fasta needs to be provided via -G/--genome', file=sys.stderr)
         sys.exit(2)
     if options.dir_scale_factors == '-' and options.scaleCounts:
@@ -105,7 +105,7 @@ def parse_options(argv):
 
 def __get_counts_from_marginal_exons(exon_t_gene, data):
 
-    my_counts = sp.zeros((exon_t_gene.shape[0], data.shape[1], 2))
+    my_counts = np.zeros((exon_t_gene.shape[0], data.shape[1], 2))
 
     for i, rec in enumerate(exon_t_gene):
 
@@ -141,13 +141,13 @@ def main():
             count_files = count_files + 1
 
         if cnt_file is not None and count_files > 0:
-            header = sp.loadtxt(options.dir_cnt + "/counts_header.tsv", delimiter="\t", dtype="string")
+            header = np.loadtxt(options.dir_cnt + "/counts_header.tsv", delimiter="\t", dtype="str")
             exon_t_gene = np.load(cnt_file)[:, :-2]
-            my_counts = sp.zeros((exon_t_gene.shape[0], count_files, 2))
+            my_counts = np.zeros((exon_t_gene.shape[0], count_files, 2))
             for i in range(count_files):
                 my_counts[:, i, :] = np.load(options.dir_cnt + '/counts_' + str(i) + '.npy')[:, -2:]
         else:
-            print("No count files found in specified directory %s" % options.dir_cnt)
+            print(("No count files found in specified directory %s" % options.dir_cnt))
             sys.exit(1)
 
     else:
@@ -163,12 +163,12 @@ def main():
             options.readLength,
             options.legacy)
 
-        if options.dir_fastq != '-':
+        if options.dir_fastq != '-' or options.fn_fastq != '-':
             if options.fn_pickle_filt is not None \
                     and os.path.exists(options.fn_pickle_filt):
-                (kmers1, kmers2) = cPickle.load(open(options.fn_pickle_filt, 'r'))
+                (kmers1, kmers2) = pickle.load(open(options.fn_pickle_filt, 'rb'), encoding='latin1')
             elif os.path.exists('filt_kmers_k%i.pickle' % options.k):
-                (kmers1, kmers2) = cPickle.load(open(('filt_kmers_k%i.pickle' % options.k), 'r'))
+                (kmers1, kmers2) = pickle.load(open(('filt_kmers_k%i.pickle' % options.k), 'rb'), encoding='latin1')
             else:
                 kmers1, kmers2 = prepare_kmers(
                     exon_t_gene,
@@ -181,10 +181,13 @@ def main():
                     options.k,
                     options.fn_genome)
 
-            fastq_list = glob.glob(os.path.join(options.dir_fastq, '*.fastq')) \
-                + glob.glob(os.path.join(options.dir_fastq, '*.fastq.gz')) \
-                + glob.glob(os.path.join(options.dir_fastq, '*.fq')) \
-                + glob.glob(os.path.join(options.dir_fastq, '*.fq.gz'))
+            if options.fn_fastq != '-':
+                fastq_list = [options.fn_fastq]
+            elif options.dir_fastq != '-':
+                fastq_list = glob.glob(os.path.join(options.dir_fastq, '*.fastq')) \
+                    + glob.glob(os.path.join(options.dir_fastq, '*.fastq.gz')) \
+                    + glob.glob(os.path.join(options.dir_fastq, '*.fq')) \
+                    + glob.glob(os.path.join(options.dir_fastq, '*.fq.gz'))
             if options.separateFiles:
                 header = fastq_list
             else:
@@ -216,10 +219,10 @@ def main():
         ### normalize counts by exon length
         logging.info("Normalize counts by exon length")
         if options.qMode == 'raw':
-            exonl = sp.array([int(x.split(':')[1].split('-')[1])
+            exonl = np.array([int(x.split(':')[1].split('-')[1])
                              - int(x.split(':')[1].split('-')[0]) + 1 for x in exon_t_gene[:, :2].ravel('C')],
                              dtype='float') / 1000.
-            data /= sp.tile(exonl[:, sp.newaxis], data.shape[1])
+            data /= np.tile(exonl[:, np.newaxis], data.shape[1])
 
         # Get counts from first and last exon
         logging.info("Get counts from marginal exons")
@@ -227,11 +230,11 @@ def main():
 
         if options.saveCounts:
             # MM CAVEAT: Order of exon-positions and counts might be switched (strand! --> see fct to get counts)
-            sp.savetxt(options.dir_out + "/counts_header.tsv", header, delimiter="\t", fmt="%s")
+            np.savetxt(options.dir_out + "/counts_header.tsv", header, delimiter="\t", fmt="%s")
             for i in range(my_counts.shape[1]):
                 exon_table = np.column_stack((exon_t_gene[:, :], my_counts[:, i, :]))
                 np.save(options.dir_out + '/counts_' + str(i) + '.npy', exon_table)
-                sp.savetxt(options.dir_out + '/counts_' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
+                np.savetxt(options.dir_out + '/counts_' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
 
     if options.scaleCounts:
         if not (os.path.exists(options.dir_scale_factors + "/scalingFactors.npy")):
@@ -245,7 +248,7 @@ def main():
                 low_b = scaling_factors[i, j, 2]
                 up_b = scaling_factors[i, j, 3]
                 factor = scaling_factors[i, j, 0]
-                i_ok = sp.intersect1d(np.where(low_b < exon_lengths)[0], np.where(exon_lengths <= up_b)[0])
+                i_ok = np.intersect1d(np.where(low_b < exon_lengths)[0], np.where(exon_lengths <= up_b)[0])
 
                 if options.scaleMode == 'first':
                     my_counts[i_ok, i, 0] = my_counts[i_ok, i, 0] * factor
@@ -254,16 +257,16 @@ def main():
                         my_counts[i_ok, i, 1] = my_counts[i_ok, i, 1] / factor
                 else:
                     assert options.scaleMode == 'pseudoFirst'
-                    i_ok_scale = sp.intersect1d(i_ok, np.where(my_counts[:, i, 1] > 0)[0])
+                    i_ok_scale = np.intersect1d(i_ok, np.where(my_counts[:, i, 1] > 0)[0])
                     my_counts[i_ok, i, :] = my_counts[i_ok, i, :] + 1
                     my_counts[i_ok_scale, i, 0] = my_counts[i_ok_scale, i, 0] * factor
 
         # MM Save scaled counts for experimental purposes - can be removed later
-        sp.savetxt(options.dir_out + "/scaledCounts_header.tsv", header, delimiter="\t", fmt="%s")
+        np.savetxt(options.dir_out + "/scaledCounts_header.tsv", header, delimiter="\t", fmt="%s")
         for i in range(my_counts.shape[1]):
             exon_table = np.column_stack((exon_t_gene[:, :], my_counts[:, i, :]))
             np.save(options.dir_out + '/scaledCounts_' + str(i) + '.npy', exon_table)
-            sp.savetxt(options.dir_out + '/scaledCounts_' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
+            np.savetxt(options.dir_out + '/scaledCounts_' + str(i) + '.tsv', exon_table, delimiter='\t', fmt='%s')
 
     logging.info("Calculate Bias and Find Median")
 
@@ -272,39 +275,40 @@ def main():
         if options.doPseudo:
             #AK: I had to filter for counts with some signal, otherwise the median is always 1.0
             i_ok = ((my_counts[:, i, 1] > 0) | (my_counts[:, i, 0] > 0))
-            ratio = sp.percentile((my_counts[i_ok, i, 1] + 1) / (my_counts[i_ok, i, 0] + 1), 50)
+            ratio = np.percentile((my_counts[i_ok, i, 1] + 1) / (my_counts[i_ok, i, 0] + 1), 50)
         else:
             i_ok = ((my_counts[:, i, 1] > 0) & (my_counts[:, i, 0] > 0))
-            ratio = sp.percentile(my_counts[i_ok, i, 1] / my_counts[i_ok, i, 0], 50)
+            ratio = np.percentile(my_counts[i_ok, i, 1] / my_counts[i_ok, i, 0], 50)
 
-        assert sp.sum(sp.isnan(ratio)) + sp.sum(sp.isinf(ratio)) == 0
+        assert np.sum(np.isnan(ratio)) + np.sum(np.isinf(ratio)) == 0
         vals.append(ratio)
 
-    vals = sp.array(vals)
+    vals = np.array(vals)
 
-    iqr = ((sp.percentile(vals, 75) - sp.percentile(vals, 25)) * 1.5)
+    iqr = ((np.percentile(vals, 75) - np.percentile(vals, 25)) * 1.5)
 
-    logging.info("Tukey Filter is estimated to be %f" % (iqr + sp.percentile(vals, 75)))
+    logging.info("Tukey Filter is estimated to be %f" % (iqr + np.percentile(vals, 75)))
     if len(vals) > 1:
-        print("Tukey Filter is estimated to be %f" % (iqr + sp.percentile(vals, 75)))
-        print("Tukey Filter is estimated to be %f" % (sp.percentile(vals, 25) - iqr))
+        print(("Tukey Filter is estimated to be %f" % (iqr + np.percentile(vals, 75))))
+        print(("Tukey Filter is estimated to be %f" % (np.percentile(vals, 25) - iqr)))
 
-    sp.savetxt(options.dir_out + '/%s_sample_a_ratio_%s.tsv' % (options.fn_out, options.readLength),
-               sp.vstack((header, vals.astype('string'))).T, delimiter='\t', fmt='%s')
+    np.savetxt(options.dir_out + '/%s_sample_a_ratio_%s.tsv' % (options.fn_out, options.readLength),
+               np.vstack((header, vals.astype('str'))).T, delimiter='\t', fmt='%s')
 
     if options.doPlot:
         logging.info("Plot all samples")
 
-        baseline_data = sp.loadtxt(options.fn_sample_ratio, delimiter='\t', dtype='string')
+        baseline_data = np.loadtxt(options.fn_sample_ratio, delimiter='\t', dtype='str')
         baseline_data = baseline_data[:, 1].astype('float')
 
-        base_p_val = sp.hstack((baseline_data, vals))
-        midx = sp.hstack((sp.ones(baseline_data.shape[0]), sp.zeros(vals.shape[0]))).astype('bool')
+        base_p_val = np.hstack((baseline_data, vals))
+        midx = np.hstack((np.ones(baseline_data.shape[0]), np.zeros(vals.shape[0]))).astype('bool')
         plotBias(base_p_val, '%s_bias_sorted_vline_%s.png' % (options.fn_out, options.readLength), midx)
-        midx = sp.hstack((sp.ones(baseline_data.shape[0]), sp.zeros(vals.shape[0]))).astype('bool')
+        midx = np.hstack((np.ones(baseline_data.shape[0]), np.zeros(vals.shape[0]))).astype('bool')
         plotBias(base_p_val, '%s_bias_sorted_vline_log_%s.png' % (options.fn_out, options.readLength), midx, logScale=True)
 
     return 0
 
 if __name__ == "__main__":
     sys.exit(main())
+

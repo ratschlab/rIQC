@@ -1,9 +1,9 @@
 import sys
-import scipy as sp
 import os
 import time
 import pickle
 import gzip
+import numpy as np
 import numpy.random as npr
 
 npr.seed(23)
@@ -49,12 +49,12 @@ def prepare_kmers(regions, fn_genome, k):
     kmers2 = [set() for _ in regions]
     t0 = time.time()
     # MM: creates array of chromosome names in the order they occur in annotation file (same length as kmers)
-    chrms = sp.array([_.strip('chr') for _ in regions[:, 2]])
+    chrms = np.array([_.strip('chr') for _ in regions[:, 2]])
     # MM: sequence for each chrm in .fasta file
     for chrm, seq in __read_genome(fn_genome):
         print('processing %s' % chrm)
         # MM: array of all indices in chrms-array that match chrm name from .fasta
-        idx = sp.where(chrms == chrm)[0]
+        idx = np.where(chrms == chrm)[0]
         for i in idx:
             rec = regions[i, :]
             if cnt > 0 and cnt % 100 == 0:
@@ -99,7 +99,7 @@ def clean_kmers(kmers1, kmers2, fn_pickle_all, fn_pickle_filt, k, fn_genome):
     
     print('Making kmers unique')
     if os.path.exists(kmer_pickle):
-        (all_kmers1, all_kmers2) = pickle.load(open(kmer_pickle, 'r'))
+        (all_kmers1, all_kmers2) = pickle.load(open(kmer_pickle, 'rb'))
     else:
         # MM: creates dictionaries with values: 0 and keys: all existing kmers (from fasta)
         all_kmers1 = dict([[_, 0] for s in kmers1 for _ in s])
@@ -123,7 +123,7 @@ def clean_kmers(kmers1, kmers2, fn_pickle_all, fn_pickle_filt, k, fn_genome):
                     all_kmers2[__reverse_complement(seq[s:s + k])] += 1
                 except KeyError:
                     pass
-        pickle.dump((all_kmers1, all_kmers2), open(kmer_pickle, 'w'), -1)
+        pickle.dump((all_kmers1, all_kmers2), open(kmer_pickle, 'wb'), -1)
 
     ### remove all non-unique entries
     removed = 0
@@ -143,9 +143,9 @@ def clean_kmers(kmers1, kmers2, fn_pickle_all, fn_pickle_filt, k, fn_genome):
         print('Removed %i non-unique kmers (%.2f percent)' % (removed, removed / float(total) * 100))
 
     if fn_pickle_filt is not None:
-        pickle.dump((kmers1, kmers2), open(fn_pickle_filt, 'w'), -1)
+        pickle.dump((kmers1, kmers2), open(fn_pickle_filt, 'wb'), -1)
     else:
-        pickle.dump((kmers1, kmers2), open(('filt_kmers_k%i.pickle' % k), 'w'), -1)
+        pickle.dump((kmers1, kmers2), open(('filt_kmers_k%i.pickle' % k), 'wb'), -1)
     
     return (kmers1, kmers2)
 
@@ -155,9 +155,9 @@ def get_counts_from_multiple_fastq(fn_fastq, kmers1, kmers2, separateFiles, kmer
         files"""
 
     if not separateFiles:
-        return __get_counts_from_single_fastq(fn_fastq, kmers1, kmers2, kmerThresh, k, step_k)[:, sp.newaxis]
+        return __get_counts_from_single_fastq(fn_fastq, kmers1, kmers2, kmerThresh, k, step_k)[:, np.newaxis]
     else:
-        return sp.hstack([__get_counts_from_single_fastq(fn_fastq[i], kmers1, kmers2, kmerThresh, k, step_k)[:, sp.newaxis] for i in
+        return np.hstack([__get_counts_from_single_fastq(fn_fastq[i], kmers1, kmers2, kmerThresh, k, step_k)[:, np.newaxis] for i in
                           range(len(fn_fastq))])
 
 
@@ -193,6 +193,10 @@ def __get_counts_from_single_fastq(fn_fastqs, kmers1, kmers2, kmerThresh, k, ste
             if use_fraction and npr.random() > kmerThresh:
                 continue
             sl = line.strip()
+            try:
+                sl = sl.decode('utf-8')
+            except AttributeError:
+                pass
             slr = __reverse_complement(sl)
             for s in range(0, len(sl) - k + 1, step_k):
                 try:
@@ -222,5 +226,5 @@ def __get_counts_from_single_fastq(fn_fastqs, kmers1, kmers2, kmerThresh, k, ste
         fh.close()
 
     # MM: returns counts per gene (each kmers[y] contains all kmers that belong to one gene)
-    return sp.array([[sp.sum([all_kmers1[x] for x in kmers1[y]]), sp.sum([all_kmers2[x] for x in kmers2[y]])] for y in
+    return np.array([[np.sum([all_kmers1[x] for x in kmers1[y]]), np.sum([all_kmers2[x] for x in kmers2[y]])] for y in
                      range(len(kmers1))], dtype='float').ravel('C')
