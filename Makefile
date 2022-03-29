@@ -59,7 +59,7 @@ prospector-all:
 	prospector --die-on-tool-error --profile minimal --test-warnings --doc-warnings minimal
 
 test: ## run tests quickly with the default Python
-	py.test
+	pytest
 
 test-all: ## run tests on every Python version with tox
 	tox
@@ -82,8 +82,9 @@ servedocs: docs ## compile the docs watching for changes
 	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
 
 release: clean ## package and upload a release
-	python setup.py sdist upload
-	python setup.py bdist_wheel upload
+	python setup.py sdist
+	python setup.py bdist_wheel
+	twine upload dist/*
 
 dist: clean ## builds source and wheel package
 	python setup.py sdist
