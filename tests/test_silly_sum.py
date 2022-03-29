@@ -1,5 +1,5 @@
 import pytest
-import m53.silly_sum as silly_sum
+import riqc.silly_sum as silly_sum
 import pandas as pd
 import numpy as np
 import os

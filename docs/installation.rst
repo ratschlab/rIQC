@@ -8,13 +8,13 @@ Installation
    Stable release
    --------------
 
-   To install m53, run this command in your terminal:
+   To install rIQC, run this command in your terminal:
 
    .. code-block:: console
 
-       $ pip install m53
+       $ pip install riqc
 
-   This is the preferred method to install m53, as it will always install the most recent stable release.
+   This is the preferred method to install riqc, as it will always install the most recent stable release.
 
    If you don't have `pip`_ installed, this `Python installation guide`_ can guide
    you through the process.
@@ -26,20 +26,20 @@ Installation
 From sources
 ------------
 
-The sources for m53 can be downloaded from the `Github repo`_.
+The sources for rIQC can be downloaded from the `Github repo`_.
 
 You can clone the repository:
 
 .. code-block:: console
 
-    $ git clone git://github.com/ratschlab/m53
+    $ git clone git://github.com/ratschlab/riqc
 
 ..
    Or download the `tarball`_:
 
    .. code-block:: console
 
-       $ curl  -OL https://github.com/ratschlab/m53/tarball/master
+       $ curl  -OL https://github.com/ratschlab/riqc/tarball/master
 
 Once you have a copy of the source, you can install it with:
 
@@ -48,7 +48,7 @@ Once you have a copy of the source, you can install it with:
     $ python setup.py install
 
 
-.. _Github repo: https://github.com/ratschlab/m53
+.. _Github repo: https://github.com/ratschlab/riqc
 ..
 
-   .. _tarball: https://github.com/ratschlab/m53/tarball/master
+   .. _tarball: https://github.com/ratschlab/riqc/tarball/master

@@ -1,4 +1,4 @@
-Welcome to m53's documentation!
+Welcome to rIQC's documentation!
 ======================================
 
 .. toctree::

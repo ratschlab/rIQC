@@ -2,6 +2,6 @@
 Usage
 =====
 
-To use m53 in a project::
+To use rIQC in a project::
 
-    import m53
+    import riqc

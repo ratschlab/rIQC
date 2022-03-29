@@ -1,14 +1,14 @@
 ===
-m53
+riqc
 ===
 
 ..
    
-   .. image:: https://img.shields.io/pypi/v/m53.svg
-           :target: https://pypi.python.org/pypi/m53
+   .. image:: https://img.shields.io/pypi/v/riqc.svg
+           :target: https://pypi.python.org/pypi/riqc
 
-   .. image:: https://readthedocs.org/projects/m53/badge/?version=latest
-           :target: https://m53.readthedocs.io/en/latest/?badge=latest
+   .. image:: https://readthedocs.org/projects/riqc/badge/?version=latest
+           :target: https://riqc.readthedocs.io/en/latest/?badge=latest
            :alt: Documentation Status
 
 
@@ -24,7 +24,7 @@ Installation
 ------------
 
 The simplest is to install via:
-    pip install m53
+    pip install riqc
 
 If you downloaded the code directly, you can also run:
     python setup.py install
@@ -35,12 +35,12 @@ Usage
 Degradation Detection in Aligned Files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Example:
-    m53 --bam_dir='...' --anno_fn='...' --out_dir='...' --log='...'
+    riqc --bam_dir='...' --anno_fn='...' --out_dir='...' --log='...'
 
 Degradation Detection in Non-Aligned Files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Example:
-    m53 --fastq_dir='...' --genome='...' --anno_fn='...'
+    riqc --fastq_dir='...' --genome='...' --anno_fn='...'
     --out_dir='...' --out_fn='...' --pickle_all='...' --pickle_filt='...' --log='...'
 
 All Options for Degradation Detection
